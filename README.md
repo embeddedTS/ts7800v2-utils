@@ -2,13 +2,13 @@
 
 System utilities for the TS-7800v2.  These are:<br>
 
-    eth_phy_peekpoke, for accessing registers in the ethernet PHY.<br>
+    eth_phy_peekpoke, for accessing registers in the ethernet PHY.
     
-    peekpoke, for accessing memory and memory-mapped registers.<br>
+    peekpoke, for accessing memory and memory-mapped registers.
     
-    led7800, for controlling the status LEDs on the board.<br>
+    led7800, for controlling the status LEDs on the board.
     
-    rtc7800, for accessing the RTC.<br>
+    rtc7800, for accessing the RTC.
     
-    ts7800ctl, for accessing ADCs, WDT, and sleep function.<br>
+    ts7800ctl, for accessing ADCs, WDT, and sleep function.
     
