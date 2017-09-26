@@ -20,7 +20,9 @@ static void set_gled(int);
 static void offleds(void);
 static void blink(int sig);
 static int silabs_init(void);
+static void sigint_handler(int signum);
 
+static int done;
 static int green_ticks = 10;
 static int red_ticks = 10;
 static int green_left,red_left;
@@ -36,7 +38,7 @@ void usage(char **argv) {
 	  "  -g, --green ticks Blink the green LED at 'ticks' interval\n"
 	  "  -h, --help        This help\n", 
 	  program_invocation_short_name
-	);
+	   );
 }
 
 int main(int argc, char **argv) 
@@ -51,7 +53,7 @@ int main(int argc, char **argv)
    };
    led_init();  
    offleds();
-   
+
    while((c = getopt_long(argc, argv, "r:g:o:", long_options,NULL)) != -1) {
       switch (c) {
          case 'g':
@@ -71,25 +73,33 @@ int main(int argc, char **argv)
    }
   green_left = green_ticks;
   red_left = red_ticks + offset;
-  
-  signal(SIGALRM, blink);
-  signal(SIGUSR1, blink);
-  signal(SIGINT, blink);
-  signal(SIGTERM, blink);
-  signal(SIGHUP, blink);
-  atexit(offleds);
-  itv.it_interval.tv_sec = 0;
-  itv.it_interval.tv_usec = 10000;
-  itv.it_value.tv_sec = 0;
-  itv.it_value.tv_usec = 10000;
-  setitimer(ITIMER_REAL, &itv, NULL);
-  
-  while(1) sleep(1);
-  
-  return 0;
+
+   signal(SIGINT, sigint_handler); // Interrupt, catches Ctrl-C
+   signal(SIGTERM, sigint_handler); // Terminate
+   signal(SIGQUIT, sigint_handler); // Quit
+
+   signal(SIGALRM, blink);
+   signal(SIGUSR1, blink);
+   signal(SIGHUP, blink);
+   atexit(offleds);
+   itv.it_interval.tv_sec = 0;
+   itv.it_interval.tv_usec = 10000;
+   itv.it_value.tv_sec = 0;
+   itv.it_value.tv_usec = 10000;
+   setitimer(ITIMER_REAL, &itv, NULL);
+
+   while(!done) sleep(1);
+   offleds();
+   return 0;
 }
 
 
+static void sigint_handler(int signum) 
+{
+   done=1;
+   printf("done\n");
+	signal(signum, sigint_handler);
+}
 
 // LED stuff -------------------------------------------------------
 static volatile unsigned int *gled = NULL;
@@ -167,6 +177,8 @@ static void blink(int sig)
   struct itimerval itv;
   static int rled = 0;  
   
+  if (done) exit(0);
+  
   if (green_left > 0) green_left--;
   if (red_left > 0) red_left--;
 
@@ -180,16 +192,17 @@ static void blink(int sig)
     set_gled(!get_gled());
   }
 
-  if (sig == SIGINT || sig == SIGTERM || sig == SIGUSR1) {
-    offleds();
-    exit(0);
-  }
+  
   // We shouldn't have to do the following, but if we don't we never see a second signal!
+
   itv.it_interval.tv_sec = 0;
   itv.it_interval.tv_usec = 10000;
   itv.it_value.tv_sec = 0;
   itv.it_value.tv_usec = 10000;
   setitimer(ITIMER_REAL, &itv, NULL);
+
+  signal(sig, blink);
+
 }
 
 static int silabs_init(void)

@@ -45,8 +45,9 @@
    24,25 P2.7  ADC_0 (scaled 50%)
    
 */ 
+
  
-volatile unsigned int *data, *control, *status, *led;
+volatile unsigned int *data, *control, *status, *led, *syscon;
 static unsigned int verbose, addr;
 static int model, done;
 
@@ -59,6 +60,7 @@ static void exit_gracefully(int signum) {
 	done = 1;
 }
 
+
 static void usage(char **);
 static int parsechans(const char*, unsigned int);
 
@@ -67,12 +69,12 @@ static int twifd;
 
 int main(int argc, char **argv)
 {
-   int c;
+   int c, devmem;
    unsigned int val_addr=0, val_data=0;
    unsigned int otp_addr, otp_data, secs = 0;
    unsigned int display_otp=0, display_mem=0, display_mac=0;
 	unsigned int display_odom=0, did_something=0, display_bday=0;
-   unsigned int start_adc=0, raw=0;
+   unsigned int start_adc=0, raw=0, fpga_info=0;
    unsigned int len, odom, bday;
    char str[80];
    
@@ -102,7 +104,7 @@ int main(int argc, char **argv)
 	signal(SIGPIPE, exit_gracefully);
 
 
-	while ((c = getopt(argc, argv, "s:fdr:S:A:D:nFVoOmMB")) != -1) {
+	while ((c = getopt(argc, argv, "s:fdr:S:A:D:inFVoOmMB")) != -1) {
 	   switch(c) {
 			case 's': 
 			   printf("TBD: -%c option\n", c);
@@ -115,12 +117,16 @@ int main(int argc, char **argv)
 					  "maximum sleep time is 524288\n");
 				did_something=1;
 			   break;
-			   
+
  			case 'f':
  			   printf("TBD: -%c option\n", c);
 			   break;
-			
- 			case 'd':
+
+         case 'i':
+ 			   fpga_info = 1;
+			   break;
+
+         case 'd':
  			   printf("TBD: -%c option\n", c);
 			   break;
 
@@ -132,7 +138,7 @@ int main(int argc, char **argv)
 				strncpy(str, optarg, len);
 				str[len] = '\0';
 			   break;
-			   
+
  			case 'S':
             start_adc=1;
 				for(len=0;len<80;len++)
@@ -203,6 +209,21 @@ int main(int argc, char **argv)
 	   }	
    }
    
+   if (fpga_info) {
+      devmem = open("/dev/mem", O_RDWR|O_SYNC);
+	   if (devmem < 0) {
+	      fprintf(stderr, "Error:  Can't open /dev/mem\n");
+	      return 1;
+	   }
+	   syscon = (unsigned int *) mmap(0, 4096,
+	     PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0xe8000000);
+
+	   printf("fpga_rev=0x%02X\n"
+	          "board_id=0x%04X\n", *syscon & 0xFF, (*syscon >> 8) & 0xFFFF);
+
+   }
+
+
    if(start_adc) {
       unsigned char data[32];		
 	       
@@ -274,7 +295,8 @@ static void usage(char **argv)
 	  "  -D    DATA            Write DATA to ADDR in one time programmable memory\n"
 	  "  -n                    Red LED on\n"
 	  "  -F                    Red LED off\n"
-     "  -o                    Display one time programmable data\n"
+	  "  -i                    Display FPGA info\n"
+	  "  -o                    Display one time programmable data\n"
      "  -m                    Display contents of non-volatile memory\n"
      "  -M                    Display MAC address\n"
      "  -O                    Display odometer(hrs board has been running for)\n"
