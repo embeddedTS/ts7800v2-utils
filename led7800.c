@@ -103,27 +103,32 @@ static void sigint_handler(int signum)
 
 // LED stuff -------------------------------------------------------
 static volatile unsigned int *gled = NULL;
+static volatile unsigned int *rled = NULL;
 
 static void led_init(void) 
 {
   off_t page;
-  unsigned char *start;
+  unsigned char *syscon;
   int  fd = open("/dev/mem", O_RDWR|O_SYNC);
-  const int GLED_DATA = 0xE8000008;
+  const int SYSCON = 0xFC081000;
 
   if (fd == -1) {
     perror("/dev/mem");
     return;
   }
 	    
-  page = GLED_DATA & 0xfffff000;
-  start = mmap(0, getpagesize(), PROT_READ|PROT_WRITE,MAP_SHARED, fd, page);
+  page = SYSCON & 0xfffff000;
+  syscon = mmap(0, getpagesize(), PROT_READ|PROT_WRITE,MAP_SHARED, fd, page);
   
-  if (start == MAP_FAILED) {
+  if (syscon == MAP_FAILED) {
     perror("mmap:");    
   } else {
-      gled = (unsigned int *)(start + (GLED_DATA & 0xfff));
-      *gled = 0;
+      gled = (unsigned int *)(syscon + (SYSCON & 0xfff) + 8);
+      *gled &= ~(1 << 30);
+      
+      rled = (unsigned int *)(syscon + (SYSCON & 0xfff) + 0xc);
+      *rled &= ~(1 << 20);
+      
   }
    
   i2c_fd = silabs_init(); 
@@ -133,7 +138,7 @@ static void led_init(void)
 static int get_gled(void) 
 {
   if (gled) {
-    return (*gled & 0x40000000) != 0;
+    return (*gled & (1 << 30)) != 0;
   } else 
     
    {
@@ -145,24 +150,22 @@ static void set_gled(int on)
 {
   if (gled) {
     if (on) {
-      *gled |= 0x40000000;
+      *gled |= (1 << 30);
     } else {
-      *gled &= ~0x40000000;
+      *gled &= ~(1 << 30);
     }
   } 
 }
 
 void set_rled(int on) 
 {
-  printf("TBD: implement %s\n", __func__);
-
-  /* This function needs to talk to the SiLabs to control the RED LED */
-  
-  if (on) {
-     
-  } else {
-    
-  }
+  if (rled) {
+    if (on) {
+      *rled |= (1 << 20);
+    } else {
+      *rled &= ~(1 << 20);
+    }
+  } 
 }
 
 static void offleds(void) 
