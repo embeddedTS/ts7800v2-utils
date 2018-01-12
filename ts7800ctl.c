@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <fcntl.h>
@@ -54,7 +55,8 @@ static int model, done, twifd;
 
 static int get_model(void);
 static int silabs_init(void);
-static int silabs_read(unsigned short, unsigned short, unsigned char *);
+static int silabs_read(int twifd, uint8_t *data, uint16_t addr, int bytes);
+static int silabs_write(int twifd, uint8_t *data, uint16_t addr, int bytes);
 static int parseMacAddress(const char *str, unsigned char *buf);
 static inline void feed_wdt(int);
 static inline void disable_wdt(void);
@@ -107,14 +109,14 @@ int main(int argc, char **argv)
 {
    int c, devmem;
    unsigned int val_addr=0, val_data=0;
-   int nvram_addr, nvram_data, secs = 0;
+   int nvram_addr, secs = 0;
    int red_led_on=0, red_led_off=0, green_led_on=0, green_led_off=0;
    unsigned int display_otp=0, display_mem=0, display_mac=0, set_mac=0 ;
    unsigned int display_odom=0, did_something=0, display_bday=0;
    unsigned int start_adc=0, raw=0, do_info=0;
-   unsigned int len; //, odom, bday;
+   unsigned int len = 0; //, odom, bday;
    char str[80];
-   unsigned char new_mac[8];
+   unsigned char new_mac[6], nvram_data = 0;;
 
    if(argc == 1) {
       usage(argv);
@@ -227,7 +229,7 @@ int main(int argc, char **argv)
 
          case 'M':
             if (optarg) {
-               if (! parseMacAddress(optarg, &new_mac[2])) {
+               if (! parseMacAddress(optarg, new_mac)) {
                   fprintf(stderr, "Invalid MAC: %s\n", optarg);
                   return 1;
                }
@@ -309,7 +311,6 @@ int main(int argc, char **argv)
 
    if (do_info) {
       unsigned char silabs_rev;
-      unsigned short adr;
       unsigned int clk_straps, cpu_temp;
       unsigned int pclk, nbclk, hclk, dclk, refclk, i;
       unsigned char buf[14];
@@ -325,7 +326,10 @@ int main(int argc, char **argv)
       syscon = (unsigned int *) mmap(0, 4096,
         PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0xFC081000);
 
-      silabs_read(2048, 1, &silabs_rev);
+      if(silabs_read(twifd, &silabs_rev, 2048, 1) != 1) {
+         perror("Failed to talk to silabs!");
+         return 1;
+      }
 
       printf("fpga_rev=0x%02X\n"
              "silabs_rev=%d\n"
@@ -362,7 +366,10 @@ int main(int argc, char **argv)
          pclk, nbclk, hclk, dclk, refclk, cpu_temp);
 
       memset(buf, 0, sizeof(buf));
-      silabs_read(1280, sizeof(buf), buf);
+      if(silabs_read(twifd, buf, 1280, sizeof(buf)) != sizeof(buf)) {
+         perror("Failed to talk to silabs!");
+         return 1;
+      }
 
       for(i=0; i < 7; i++){
             unsigned short p = 0x3FF & *(unsigned short *)&buf[i*2];
@@ -378,11 +385,8 @@ int main(int argc, char **argv)
             }
          }
 
-      adr = 0x006;   // 1536, byte-swapped
-      memset(mac, 0, sizeof(mac));
 
-      write(twifd, &adr , 2); //Write 2 byte reg address
-      read(twifd, mac, sizeof(mac));
+      silabs_read(twifd, mac, 1536, sizeof(mac));
 
       printf("hwaddr=%02x:%02x:%02x:%02x:%02x:%02x\n",
          mac[5],mac[4],mac[3],mac[2],mac[1],mac[0]);
@@ -401,15 +405,13 @@ int main(int argc, char **argv)
       did_something = 1;
 
       while(! done) {
-         char adrbuf[3];
          short reg = 1280 + 14; // ADC regs are 1280-1535, 2 bytes each, LE
 
          memset(buf, 0, sizeof(buf));
 
-         adrbuf[0] = ((reg >> 8) & 0xFF);
-         adrbuf[1] = (reg & 0xFF);
-         write(twifd, &adrbuf , 2); //Write 2 byte reg address
-         i = read(twifd, buf, 10);
+         if(silabs_read(twifd, buf, reg, 10) != 10) {
+            perror("Failed to write to the silabs!");
+         }
 
          for(i=0; i < 5; i++){
             unsigned short p;
@@ -453,14 +455,7 @@ int main(int argc, char **argv)
 
 
    if(val_data && val_addr) {
-      unsigned char data[3];
-      unsigned short adr = 1536 + nvram_addr;
-
-      data[0] = (adr >> 8);
-      data[1] = adr;
-      data[2] = nvram_data;
-
-      write(twifd, data, sizeof(data));
+      silabs_write(twifd, &nvram_data, 1536 + nvram_addr, sizeof(nvram_data));
    }
 
    if(display_odom) {
@@ -471,23 +466,18 @@ int main(int argc, char **argv)
         printf("TBD: implement birthdate function\n");
    }
 
-
-
-
    if (set_mac) {
-      new_mac[0] = 6;
-      new_mac[1] = 0;
-      write(twifd, &new_mac , sizeof(new_mac));
+      silabs_write(twifd, new_mac, 1536, sizeof(new_mac));
    }
 
    if(display_mac) {
       unsigned char mac[6];
-      unsigned short adr = 0x006;   // 1536, byte-swapped
-
       memset(mac, 0, sizeof(mac));
 
-      write(twifd, &adr , 2); //Write 2 byte reg address
-      read(twifd, mac, sizeof(mac));
+      if(silabs_read(twifd, mac, 1536, sizeof(mac))){
+         perror("Failed to talk to silabs!");
+         return 1;
+      }
 
       printf("HWaddr %02x:%02x:%02x:%02x:%02x:%02x\n",
          mac[5],mac[4],mac[3],mac[2],mac[1],mac[0]);
@@ -495,16 +485,14 @@ int main(int argc, char **argv)
 
    if(display_mem || display_otp) {
       unsigned char buf[16];
-      char adrbuf[2];
       int i;
 
       memset(buf, 0, sizeof(buf));
 
-      adrbuf[0] = ((addr >> 8) & 0xFF);
-      adrbuf[1] = (addr & 0xFF);
-
-      write(twifd, &adrbuf , 2); //Write 2 byte reg address
-      read(twifd, buf, sizeof(buf));
+      if(silabs_read(twifd, buf, addr, sizeof(buf))){
+         perror("Failed to talk to silabs!");
+         return 1;
+      }
 
       for(i=0; i < 4; i++)
          fwrite(&buf[i * sizeof(unsigned int)], sizeof(unsigned int), 1, stdout);
@@ -618,15 +606,63 @@ static int silabs_init(void)
    return fd;
 }
 
-static int silabs_read(unsigned short reg, unsigned short cnt, unsigned char *buf)
+static int silabs_read(int twifd, uint8_t *data, uint16_t addr, int bytes)
 {
-   char adrbuf[3];
+   struct i2c_rdwr_ioctl_data packets;
+   struct i2c_msg msgs[2];
+   char busaddr[2];
 
-   adrbuf[0] = ((reg >> 8) & 0xFF);
-   adrbuf[1] = (reg & 0xFF);
-   write(twifd, &adrbuf , 2); //Write 2 byte reg address
-   return read(twifd, buf, cnt);
+   busaddr[0] = ((addr >> 8) & 0xff);
+   busaddr[1] = (addr & 0xff);
+
+   msgs[0].addr = SILABS_CHIP_ADDRESS;
+   msgs[0].flags = 0;
+   msgs[0].len = 2;
+   msgs[0].buf = busaddr;
+
+   msgs[1].addr = SILABS_CHIP_ADDRESS;
+   msgs[1].flags = I2C_M_RD;
+   msgs[1].len = bytes;
+   msgs[1].buf =  (void *)data;
+
+   packets.msgs  = msgs;
+   packets.nmsgs = 2;
+
+   if(ioctl(twifd, I2C_RDWR, &packets) < 0) {
+      perror("Unable to send data");
+      return 1;
+   }
+   return 0;
 }
+
+static int silabs_write(int twifd, uint8_t *data, uint16_t addr, int bytes)
+{
+   struct i2c_rdwr_ioctl_data packets;
+   struct i2c_msg msg;
+   uint8_t outdata[4096];
+
+   /* Linux only supports 4k transactions at a time, and we need
+    * two bytes for the address */
+   assert(bytes <= 4094);
+
+   outdata[0] = ((addr >> 8) & 0xff);
+   outdata[1] = (addr & 0xff);
+   memcpy(&outdata[2], data, bytes);
+
+   msg.addr = SILABS_CHIP_ADDRESS;
+   msg.flags = 0;
+   msg.len  = 2 + bytes;
+   msg.buf  = (char *)outdata;
+
+   packets.msgs  = &msg;
+   packets.nmsgs = 1;
+
+   if(ioctl(twifd, I2C_RDWR, &packets) < 0) {
+      return 1;
+   }
+   return 0;
+}
+
 
 /** must be in the form XX:XX:XX:XX:XX:XX, where XX is a hex number */
 
@@ -651,23 +687,25 @@ static int parseMacAddress(const char *str, unsigned char *buf)
 
 static inline void feed_wdt(int t)
 {
+   int ret;
    unsigned char data[] = {
-      0x04, 0x00, // 1024, byte-swapped
       0x20, 0x03, 0, 0  // 800
    };
 
-   write(twifd, data, sizeof(data));
+   ret = silabs_write(twifd, data, 1024, sizeof(data)) != sizeof(data);
+   if(!ret) {
+      perror("Failed to write to the silabs!");
+   }
    enable_wdt();
 }
 
 static inline void enable_wdt(void)
 {
-   unsigned char data[] = {
-      0x04, 0x04, // 1028, byte-swapped
-      1
-   };
+   unsigned char data = 0x1;
 
-   write(twifd, data, sizeof(data));
+   if(!silabs_write(twifd, &data, 1028, 1) != 1) {
+      perror("Failed to write to the silabs!");
+   }
 }
 
 static inline void disable_wdt(void)
@@ -677,7 +715,9 @@ static inline void disable_wdt(void)
       0
    };
 
-   write(twifd, data, sizeof(data));
+   if(!silabs_write(twifd, data, 1028, 1) != 1) {
+      perror("Failed to write to the silabs!");
+   }
 }
 
 static inline void do_silabs_sleep(unsigned int deciseconds)
@@ -688,18 +728,18 @@ static inline void do_silabs_sleep(unsigned int deciseconds)
 
    disable_wdt();
 
-   data[0] = 0x04; // 1024, byte-swapped
-   data[1] = 0;
-   data[2] = deciseconds & 0xFF;
-   data[3] = (deciseconds >> 8) & 0xFF;
-   data[4] = (deciseconds >> 16) & 0xFF;
-   data[5] = (deciseconds >> 24) & 0xFF;
+   data[0] = deciseconds & 0xFF;
+   data[1] = (deciseconds >> 8) & 0xFF;
+   data[2] = (deciseconds >> 16) & 0xFF;
+   data[3] = (deciseconds >> 24) & 0xFF;
 
-   write(twifd, data, 6);
+   if(!silabs_write(twifd, data, 1024, 4) != 4) {
+      perror("Failed to write to the silabs!");
+   }
 
-   data[0] = 0x04; // 1028, byte-swapped
-   data[1] = 0x04;
-   data[2] = 2;
+   data[0] = 2;
 
-   write(twifd, data, 3);
+   if(!silabs_write(twifd, data, 1028, 1) != 1) {
+      perror("Failed to write to the silabs!");
+   }
 }
