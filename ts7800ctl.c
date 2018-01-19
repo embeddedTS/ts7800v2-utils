@@ -456,6 +456,7 @@ int main(int argc, char **argv)
 
    if(val_data && val_addr) {
       silabs_write(twifd, &nvram_data, 1536 + nvram_addr, sizeof(nvram_data));
+      printf("Microcontroller eeprom written; A power-cycle is needed before the new settings take effect\n");
    }
 
    if(display_odom) {
@@ -468,6 +469,7 @@ int main(int argc, char **argv)
 
    if (set_mac) {
       silabs_write(twifd, new_mac, 1536, sizeof(new_mac));
+      printf("Microcontroller eeprom written; A power-cycle is needed before the new settings take effect\n");
    }
 
    if(display_mac) {

@@ -1,7 +1,7 @@
-utils = eth_phy_peekpoke led7800 peekpoke rtc7800 ts7800ctl 
+utils = eth_phy_peekpoke led7800 peekpoke rtc7800 ts7800ctl load_fpga_flash
 
 CC ?= arm-marvell-linux-uclibcgnueabi-gcc
-CFLAGS =  -Wall -O -mcpu=arm9 -Wl,--rpath,/slib -Wl,-dynamic-linker,/slib/ld-uClibc.so.0
+CFLAGS =  -Wall -O 
 
 all:  $(utils)
 
