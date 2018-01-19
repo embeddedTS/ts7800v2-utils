@@ -326,7 +326,7 @@ int main(int argc, char **argv)
       syscon = (unsigned int *) mmap(0, 4096,
         PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0xFC081000);
 
-      if(silabs_read(twifd, &silabs_rev, 2048, 1) != 1) {
+      if(silabs_read(twifd, &silabs_rev, 2048, 1)) {
          perror("Failed to talk to silabs!");
          return 1;
       }
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
          pclk, nbclk, hclk, dclk, refclk, cpu_temp);
 
       memset(buf, 0, sizeof(buf));
-      if(silabs_read(twifd, buf, 1280, sizeof(buf)) != sizeof(buf)) {
+      if(silabs_read(twifd, buf, 1280, sizeof(buf))) {
          perror("Failed to talk to silabs!");
          return 1;
       }
@@ -384,7 +384,6 @@ int main(int argc, char **argv)
                case 6: printf("an_3300=%d\n", 5000 * p / 1024); break;
             }
          }
-
 
       silabs_read(twifd, mac, 1536, sizeof(mac));
 
@@ -409,7 +408,7 @@ int main(int argc, char **argv)
 
          memset(buf, 0, sizeof(buf));
 
-         if(silabs_read(twifd, buf, reg, 10) != 10) {
+         if(silabs_read(twifd, buf, reg, 10)) {
             perror("Failed to write to the silabs!");
          }
 
@@ -705,7 +704,7 @@ static inline void enable_wdt(void)
 {
    unsigned char data = 0x1;
 
-   if(!silabs_write(twifd, &data, 1028, 1) != 1) {
+   if(silabs_write(twifd, &data, 1028, 1)) {
       perror("Failed to write to the silabs!");
    }
 }
@@ -717,7 +716,7 @@ static inline void disable_wdt(void)
       0
    };
 
-   if(!silabs_write(twifd, data, 1028, 1) != 1) {
+   if(silabs_write(twifd, data, 1028, 1)) {
       perror("Failed to write to the silabs!");
    }
 }
@@ -735,13 +734,13 @@ static inline void do_silabs_sleep(unsigned int deciseconds)
    data[2] = (deciseconds >> 16) & 0xFF;
    data[3] = (deciseconds >> 24) & 0xFF;
 
-   if(!silabs_write(twifd, data, 1024, 4) != 4) {
+   if(silabs_write(twifd, data, 1024, 4)) {
       perror("Failed to write to the silabs!");
    }
 
    data[0] = 2;
 
-   if(!silabs_write(twifd, data, 1028, 1) != 1) {
+   if(silabs_write(twifd, data, 1028, 1)) {
       perror("Failed to write to the silabs!");
    }
 }
