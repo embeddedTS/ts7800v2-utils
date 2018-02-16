@@ -10,7 +10,8 @@
 #include <assert.h>
 #include <string.h>
 #include <signal.h>
-
+#include <dirent.h>
+#include <linux/pci.h>
 
 /**
    This is mostly a stub because as of 8/24/2017, the SiLabs code on the
@@ -49,7 +50,11 @@
 
 #define SILABS_CHIP_ADDRESS 0x54
 
-volatile unsigned int *data, *control, *status, *led, *syscon, *cpuregs;
+static __off_t syscon_phy;
+static __off_t get_fpga_phy(void);
+
+
+static volatile unsigned int *syscon, *cpuregs;
 static unsigned int verbose, addr;
 static int model, done, twifd;
 
@@ -122,6 +127,12 @@ int main(int argc, char **argv)
       usage(argv);
       return 1;
    }
+
+   if ((syscon_phy = get_fpga_phy()) == 0) {
+      fprintf(stderr, "Warning:  Did not discover FPGA base from PCI probe\n");
+      syscon_phy = (__off_t)0xFC081000;
+   }
+
 
    if ((model=get_model())) {
       if (model != 0x7800) {
@@ -278,7 +289,7 @@ int main(int argc, char **argv)
          return 1;
       }
       syscon = (unsigned int *) mmap(0, 4096,
-        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0xFC081000);
+        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, syscon_phy);
       if (red_led_on)
          syscon[0x0c / 4] |= (1 << 20);
       else
@@ -299,7 +310,7 @@ int main(int argc, char **argv)
          return 1;
       }
       syscon = (unsigned int *) mmap(0, 4096,
-        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0xFC081000);
+        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, syscon_phy);
 
       if (green_led_on)
          syscon[0x08 / 4] |= (1 << 30);
@@ -324,7 +335,7 @@ int main(int argc, char **argv)
          return 1;
       }
       syscon = (unsigned int *) mmap(0, 4096,
-        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, 0xFC081000);
+        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, syscon_phy);
 
       if(silabs_read(twifd, &silabs_rev, 2048, 1)) {
          perror("Failed to talk to silabs!");
@@ -743,4 +754,56 @@ static inline void do_silabs_sleep(unsigned int deciseconds)
    if(silabs_write(twifd, data, 1028, 1)) {
       perror("Failed to write to the silabs!");
    }
+}
+
+
+/**
+   Try to extract the base of the FPGA by scanning sysfs for a PCI device
+   matching our vendor number (0x1204).
+*/
+static __off_t get_fpga_phy(void)
+{
+   DIR *dp;
+   struct dirent *ep;
+   static __off_t fpga = 0;
+
+   if (fpga == 0) {
+      if ((dp = opendir("/sys/bus/pci/devices/"))) {
+         FILE *f;
+         while((ep = readdir(dp)))  {
+            char name[80];
+            if (ep->d_name[0] == '.') continue;
+            sprintf(name, "/sys/bus/pci/devices/%s/vendor", ep->d_name);
+            if ((f = fopen(name, "r")) != NULL) {
+               char tmp[8];
+               if ((fgets(tmp, sizeof(tmp), f)) != NULL) {
+                  unsigned short vendor = strtoul(tmp, NULL, 0);
+                  if (vendor == 0x1204) {
+                     FILE *fc;
+                     sprintf(name, "/sys/bus/pci/devices/%s/config", ep->d_name);
+                     if ((fc = fopen(name, "r")) != NULL) {
+                        unsigned int config[PCI_STD_HEADER_SIZEOF];
+                        if (fread(config, 1, sizeof(config), fc) > 0) {
+                           if (config[PCI_BASE_ADDRESS_2 / 4])
+                              fpga = config[PCI_BASE_ADDRESS_2 / 4];
+                        } else
+                           fprintf(stderr, "Can't read from %s\n", name);
+                        fclose(fc);
+                     } else
+                        fprintf(stderr, "Can't open %s\n", name);
+                  }
+               } else
+                  fprintf(stderr, "Can't read from %s\n", name);
+               fclose(f);
+            } else
+               fprintf(stderr, "Can't open %s\n", name);
+         }
+         closedir(dp);
+      } else {
+         fprintf(stderr, "Can't list /sys/bus/pci/devices/ directory.\n");
+         return 0;
+      }
+   }
+
+   return fpga;
 }
