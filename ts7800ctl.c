@@ -87,8 +87,6 @@ static void usage(char **argv)
      "\n"
      "General options:\n"
      "  -s    seconds         Number of seconds to sleep for\n"
-     "  -f                    Feed the WDT for 8s\n"
-     "  -d                    Disable the WDT\n"
      "  -r    CHANS           Sample ADC channels CHANS, e.g. \"0-2,4\", \"1,3,4\""
                                  "output raw data to standard out\n"
      "  -S    CHANS           Sample ADC channels CHANS, e.g. \"0-2,4\", \"1,3,4\""
