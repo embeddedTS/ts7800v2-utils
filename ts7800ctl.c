@@ -100,6 +100,7 @@ static void usage(char **argv)
      "  -i                    Display FPGA info\n"
      "  -o                    Display one time programmable data\n"
      "  -m                    Display contents of non-volatile memory\n"
+     "  -t                    Display board temperature\n"
      "  -A    ADDR            Write DATA to ADDR in non-volatile memory\n"
      "  -D    DATA            Write DATA to ADDR in non-volatile memory\n"
      "  -M[xx:xx:xx:xx:xx:xx] Display [or optionally set] the MAC address\n"
@@ -117,7 +118,7 @@ int main(int argc, char **argv)
    int nvram_addr, secs = 0;
    int red_led_on=0, red_led_off=0, green_led_on=0, green_led_off=0;
    unsigned int display_otp=0, display_mem=0, display_mac=0, set_mac=0 ;
-   unsigned int display_odom=0, did_something=0, display_bday=0;
+   unsigned int display_odom=0, did_something=0, display_bday=0, display_temp=0;
    unsigned int start_adc=0, raw=0, do_info=0;
    unsigned int len = 0; //, odom, bday;
    char str[80];
@@ -157,7 +158,7 @@ int main(int argc, char **argv)
 
    nvram_addr = nvram_data = -1;
 
-   while ((c = getopt(argc, argv, "s:fdr:S:A:D:inFgGVoOmM::B")) != -1) {
+   while ((c = getopt(argc, argv, "s:fdr:S:A:D:inFgGVoOmM::Bt")) != -1) {
       switch(c) {
          case 's':
 
@@ -177,6 +178,10 @@ int main(int argc, char **argv)
 
          case 'i':
             do_info = 1;
+            break;
+
+         case 't':
+            display_temp = 1;
             break;
 
          case 'd':
@@ -323,9 +328,10 @@ int main(int argc, char **argv)
    if (do_info) {
       unsigned char silabs_rev;
       unsigned int clk_straps, cpu_temp;
-      unsigned int pclk, nbclk, hclk, dclk, refclk, i;
-      unsigned char buf[14];
+      unsigned int pclk, nbclk, hclk, dclk, refclk, i, p;
+      unsigned char buf[26];
       unsigned char mac[6];
+      int d,c,f;
 
       printf("model=%x\n", model);
 
@@ -383,7 +389,7 @@ int main(int argc, char **argv)
       }
 
       for(i=0; i < 7; i++){
-            unsigned short p = 0x3FF & *(unsigned short *)&buf[i*2];
+            p = 0x3FF & *(unsigned short *)&buf[i*2];
 
             switch(i) {
                case 0: printf("cpu_core=%d\n", 2500 * p / 1024); break;
@@ -396,11 +402,35 @@ int main(int argc, char **argv)
             }
          }
 
+      p = 0x3FF & *(unsigned short *)&buf[12*2];
+      d = ((long)p * 160156) - (764 << 16);
+      c = d / 188088;
+      f = ((d % 188088) * 1000) / 188088;
+
+      printf("temp_sens=%d\n", (c * 1000) + f);
+
       silabs_read(twifd, mac, 1536, sizeof(mac));
 
       printf("hwaddr=%02x:%02x:%02x:%02x:%02x:%02x\n",
          mac[5],mac[4],mac[3],mac[2],mac[1],mac[0]);
 
+   }
+
+   if (display_temp) {
+      unsigned short p;
+      int d,c,f;
+
+       if(silabs_read(twifd, (unsigned char*)&p, 1304, sizeof(p))) {
+         perror("Failed to talk to silabs!");
+         return 1;
+      }
+
+
+      d = ((long)p * 160156) - (764 << 16);
+      c = d / 188088;
+      f = ((d % 188088) * 1000) / 188088;
+
+      printf("temp_sens=%d\n", (c * 1000) + f);
    }
 
    if(start_adc) {
