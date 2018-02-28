@@ -30,6 +30,7 @@
 
 
 #include "i2c-dev.h"
+#include "gpiolib.h"
 
 /*
    0,1   P1.2, CPU_CORE
@@ -48,6 +49,57 @@
 
 */
 
+struct modelinfo
+{
+   int variant;
+   int maxrate;
+   int maxcores;
+   char *name;
+};
+
+struct modelinfo Models[] =
+{
+   {
+      .variant = 1,
+      .name = "TS-7800-V2-DMN1I",
+      .maxrate = 1333,
+      .maxcores = 2
+   }, {
+      .variant = 2,
+      .name = "TS-7800-V2-DMW2I",
+      .maxrate = 1333,
+      .maxcores = 2
+   }, {
+      .variant = 3,
+      .name = "TS-7800-V2-DMW3I",
+      .maxrate = 1333,
+      .maxcores = 2
+   }
+};
+#define MAX_VARIANTS 3
+
+int cpurates[] = {
+   1866,
+   1600,
+   1333,
+   1066,
+   666
+};
+
+int cpusar[] = {
+   0x10,
+   0xc,
+   0x8,
+   0x4,
+   0x0
+};
+
+enum pcbrev {
+   REVP2,
+   REVA,
+   UNKNOWN
+};
+
 #define SILABS_CHIP_ADDRESS 0x54
 
 static __off_t syscon_phy;
@@ -59,10 +111,15 @@ static unsigned int verbose, addr;
 static int model, done, twifd;
 
 static int get_model(void);
+static struct modelinfo *get_build_variant();
+enum pcbrev get_pcb_rev();
 static int silabs_init(void);
 static int silabs_read(int twifd, uint8_t *data, uint16_t addr, int bytes);
 static int silabs_write(int twifd, uint8_t *data, uint16_t addr, int bytes);
 static int parseMacAddress(const char *str, unsigned char *buf);
+static uint8_t nvram_read(int twifd, uint8_t addr);
+static void nvram_write(int twifd, uint8_t addr, uint8_t value);
+
 static inline void feed_wdt(int);
 static inline void disable_wdt(void);
 static inline void enable_wdt(void);
@@ -74,11 +131,11 @@ static void exit_gracefully(int signum) {
    done = 1;
 }
 
-
 static void usage(char **);
 static int parsechans(const char*, unsigned int);
 
-
+#define ARRAY_SIZE(array) \
+    (sizeof(array) / sizeof(*array))
 
 static void usage(char **argv)
 {
@@ -95,7 +152,7 @@ static void usage(char **argv)
      "  -F                    Red LED off\n"
      "  -g                    Green LED on\n"
      "  -G                    Green LED off\n"
-     "  -i                    Display FPGA info\n"
+     "  -i                    Display board info\n"
      "  -o                    Display one time programmable data\n"
      "  -m                    Display contents of non-volatile memory\n"
      "  -t                    Display board temperature\n"
@@ -104,6 +161,8 @@ static void usage(char **argv)
      "  -M[xx:xx:xx:xx:xx:xx] Display [or optionally set] the MAC address\n"
      "  -O                    Display odometer(hrs board has been running for)\n"
      "  -B                    Display birthdate\n"
+     "  -l   RATE             Set CPU clock rate, or if no argument lists possible rates (max default)\n"
+     "  -c   CORES            Set 1/2 Cores (max default)\n"
      "  -V                    Verbose output\n"
      "  -h                    This help screen\n",program_invocation_short_name);
 }
@@ -118,9 +177,10 @@ int main(int argc, char **argv)
    unsigned int display_otp=0, display_mem=0, display_mac=0, set_mac=0 ;
    unsigned int display_odom=0, did_something=0, display_bday=0, display_temp=0;
    unsigned int start_adc=0, raw=0, do_info=0;
+   int cpu_cores = -1, cpu_rate = -1;
    unsigned int len = 0; //, odom, bday;
    char str[80];
-   unsigned char new_mac[6], nvram_data = 0;;
+   unsigned char new_mac[6], nvram_data = 0;
 
    if(argc == 1) {
       usage(argv);
@@ -134,7 +194,8 @@ int main(int argc, char **argv)
 
 
    if ((model=get_model())) {
-      if (model != 0x7800) {
+      if (model != 0x7800 &&
+          model != 0x7840) {
          fprintf(stderr, "Unsupported model\n");
          return 1;
       }
@@ -156,7 +217,7 @@ int main(int argc, char **argv)
 
    nvram_addr = nvram_data = -1;
 
-   while ((c = getopt(argc, argv, "s:fdr:S:A:D:inFgGVoOmM::Bt")) != -1) {
+   while ((c = getopt(argc, argv, "s:fdr:S:A:D:inFgGVoOmM::Btl:c:yT")) != -1) {
       switch(c) {
          case 's':
 
@@ -168,6 +229,14 @@ int main(int argc, char **argv)
                  "maximum sleep time is 524288\n");
                secs = 0;
             }
+            break;
+
+         case 'c':
+            cpu_cores = strtoul(optarg, NULL, 0);
+            break;
+
+         case 'l':
+            cpu_rate = strtoul(optarg, NULL, 0);
             break;
 
          case 'f':
@@ -282,6 +351,76 @@ int main(int argc, char **argv)
       }
    }
 
+   if(cpu_cores != -1 ||
+      cpu_rate != -1)
+   {
+      uint8_t strap, new_strap;
+      struct modelinfo *variant = get_build_variant();
+      strap = new_strap = nvram_read(twifd, 6);
+
+      if(variant == NULL)
+         return 1;
+
+      if(cpu_cores > variant->maxcores) {
+         fprintf(stderr, "Requested %d cores, max supported by %s is %d\n",
+                 cpu_cores,
+                 variant->name,
+                 variant->maxcores);
+         exit(1);
+      }
+
+      if(cpu_rate > variant->maxrate) {
+         fprintf(stderr, "Requested %dMhz cpu clock, max supported by %s is %dMhz\n",
+                 cpu_rate,
+                 variant->name,
+                 variant->maxrate);
+         exit(1);
+      }
+
+      /* If the user specifies 0, correct to max supported by this variant */
+      if(cpu_cores == 0) {
+         cpu_cores = variant->maxcores;
+      }
+      if(cpu_rate == 0) {
+         cpu_rate = variant->maxrate;
+      }
+
+      if(cpu_cores == 1) {
+         new_strap &= ~(0x40);
+      } else if(cpu_cores == 2) {
+         new_strap |= 0x40;
+      }
+
+      if(cpu_rate != -1) {
+         int i;
+         new_strap &= 0xe0;
+         for (i = 0; i < ARRAY_SIZE(cpurates); i++)
+         {
+            if(cpu_rate == cpurates[i]) {
+               new_strap |= cpusar[i];
+               break;
+            }
+         }
+
+         if(i == ARRAY_SIZE(cpurates)) {
+            fprintf(stderr, "Strap value %d is not supported or recognized.  Acceptable cpu clock rates are:\n", cpu_rate);
+            for (int i = 0; i < ARRAY_SIZE(cpurates); i++)
+            {
+               if (cpurates[i] <= variant->maxrate)
+                  printf("\t%d\n", cpurates[i]);
+            }
+            exit(1);
+         }
+      }
+      if(new_strap == strap)
+      {
+         fprintf(stderr, "Requested strap value 0x%X is already set\n", new_strap);
+      } else {
+         nvram_write(twifd, 6, new_strap);
+         fprintf(stderr, "Strap value 0x%X is set, disconnect power and usb console to use new values\n", new_strap);
+      }
+   }
+
    if (red_led_on && red_led_off) {
       fprintf(stderr, "red LED on and off are mutually exclusive\n");
    } else if (red_led_on || red_led_off) {
@@ -330,8 +469,25 @@ int main(int argc, char **argv)
       unsigned char buf[26];
       unsigned char mac[6];
       int d,c,f;
+      enum pcbrev rev;
+      struct modelinfo *variant = get_build_variant();
 
       printf("model=%x\n", model);
+      if(variant == NULL)
+      {
+         printf("buildmodel=unknown\n");
+      } else {
+         printf("buildmodel=%s\n", variant->name);
+         printf("max_rate=%dMHhz\n", variant->maxrate);
+         printf("max_cores=%d\n", variant->maxcores);
+      }
+
+      rev = get_pcb_rev();
+
+      if(rev == REVP2)
+         printf("pcbrev=p2\n");
+      else if(rev == REVA)
+         printf("pcbrev=a\n");
 
       devmem = open("/dev/mem", O_RDWR|O_SYNC);
       if (devmem < 0) {
@@ -411,7 +567,6 @@ int main(int argc, char **argv)
 
       printf("hwaddr=%02x:%02x:%02x:%02x:%02x:%02x\n",
          mac[5],mac[4],mac[3],mac[2],mac[1],mac[0]);
-
    }
 
    if (display_temp) {
@@ -622,11 +777,13 @@ static int get_model(void)
        perror("model");
        return 0;
    }
-   fread(mdl, 256, 1, proc);
-   if (strcasestr(mdl, "TS-7800v2") || strcasestr(mdl, "TS-7800-v2"))
-      return 0x7800;
+   assert(fread(mdl, 256, 1, proc) == 0);
 
-   else {
+   if (strcasestr(mdl, "TS-7800v2") || strcasestr(mdl, "TS-7800-v2")) {
+      return 0x7800;
+   } else if (strcasestr(mdl, "TS-7840")){
+      return 0x7840;
+   } else {
       perror("model");
       return 0;
    }
@@ -644,6 +801,18 @@ static int silabs_init(void)
    }
 
    return fd;
+}
+
+static uint8_t nvram_read(int twifd, uint8_t addr)
+{
+   uint8_t val;
+   silabs_read(twifd, &val, addr + 1536, 1);
+   return val;
+}
+
+static void nvram_write(int twifd, uint8_t addr, uint8_t value)
+{
+   silabs_write(twifd, &value, addr + 1536, 1);
 }
 
 static int silabs_read(int twifd, uint8_t *data, uint16_t addr, int bytes)
@@ -786,52 +955,88 @@ static inline void do_silabs_sleep(unsigned int deciseconds)
 
 
 /**
-   Try to extract the base of the FPGA by scanning sysfs for a PCI device
-   matching our vendor number (0x1204).
+   Try to extract the base of the FPGA by looking at the specific bus/slot
 */
 static __off_t get_fpga_phy(void)
 {
-   DIR *dp;
-   struct dirent *ep;
    static __off_t fpga = 0;
 
    if (fpga == 0) {
-      if ((dp = opendir("/sys/bus/pci/devices/"))) {
-         FILE *f;
-         while((ep = readdir(dp)))  {
-            char name[80];
-            if (ep->d_name[0] == '.') continue;
-            sprintf(name, "/sys/bus/pci/devices/%s/vendor", ep->d_name);
-            if ((f = fopen(name, "r")) != NULL) {
-               char tmp[8];
-               if ((fgets(tmp, sizeof(tmp), f)) != NULL) {
-                  unsigned short vendor = strtoul(tmp, NULL, 0);
-                  if (vendor == 0x1204) {
-                     FILE *fc;
-                     sprintf(name, "/sys/bus/pci/devices/%s/config", ep->d_name);
-                     if ((fc = fopen(name, "r")) != NULL) {
-                        unsigned int config[PCI_STD_HEADER_SIZEOF];
-                        if (fread(config, 1, sizeof(config), fc) > 0) {
-                           if (config[PCI_BASE_ADDRESS_2 / 4])
-                              fpga = config[PCI_BASE_ADDRESS_2 / 4];
-                        } else
-                           fprintf(stderr, "Can't read from %s\n", name);
-                        fclose(fc);
-                     } else
-                        fprintf(stderr, "Can't open %s\n", name);
-                  }
-               } else
-                  fprintf(stderr, "Can't read from %s\n", name);
-               fclose(f);
-            } else
-               fprintf(stderr, "Can't open %s\n", name);
-         }
-         closedir(dp);
-      } else {
-         fprintf(stderr, "Can't list /sys/bus/pci/devices/ directory.\n");
-         return 0;
-      }
+      unsigned int config[PCI_STD_HEADER_SIZEOF];
+      FILE *f = fopen("/sys/bus/pci/devices/0000:03:00.0/config", "r");
+
+      if (fread(config, 1, sizeof(config), f) > 0) {
+         if (config[PCI_BASE_ADDRESS_2 / 4])
+            fpga = config[PCI_BASE_ADDRESS_2 / 4];
+      } else
+         fprintf(stderr, "Can't read from the config!\n");
+      fclose(f);
    }
 
    return fpga;
+}
+
+#define CPU_SPEED_1 30
+#define CPU_SPEED_2 31
+#define CPU_SPEED_3 34
+#define CPU_SPEED_4 35
+#define CPU_TYPE_0 36
+#define CPU_TYPE_1 44
+
+enum pcbrev get_pcb_rev()
+{
+   gpio_export(CPU_TYPE_0);
+   gpio_export(CPU_TYPE_1);
+   gpio_direction(CPU_TYPE_0, 0);
+   gpio_direction(CPU_TYPE_1, 0);
+
+   if(gpio_read(CPU_TYPE_0) == 0 &&
+      gpio_read(CPU_TYPE_1) == 1){
+      return REVP2;
+   }
+
+   if(gpio_read(CPU_TYPE_0) == 1 &&
+      gpio_read(CPU_TYPE_1) == 0){
+      return REVA;
+   }
+
+   return UNKNOWN;
+}
+
+struct modelinfo *get_build_variant()
+{
+   uint8_t variant;
+   int i;
+
+   /* P2s dont use the strapping, just map to base model supporting the same cpu */
+   if(get_pcb_rev() == REVP2){
+      return &Models[0];
+   }
+
+   gpio_export(CPU_SPEED_1);
+   gpio_export(CPU_SPEED_2);
+   gpio_export(CPU_SPEED_3);
+   gpio_export(CPU_SPEED_4);
+
+   gpio_direction(CPU_SPEED_1, 0);
+   gpio_direction(CPU_SPEED_2, 0);
+   gpio_direction(CPU_SPEED_3, 0);
+   gpio_direction(CPU_SPEED_4, 0);
+
+   /* The CPU pulls some of these pins high or low which are
+    * why some are inverted to indicate "1" if the part is there */
+   variant = (gpio_read(CPU_SPEED_4));
+   variant |= (!gpio_read(CPU_SPEED_3) << 1);
+   variant |= (!gpio_read(CPU_SPEED_2) << 2);
+   variant |= ((gpio_read(CPU_SPEED_1)) << 3);
+
+   for (i = 0; i < MAX_VARIANTS; i++)
+   {
+      if(variant == Models[i].variant)
+         return &Models[i];
+   }
+
+   fprintf(stderr, "Unknown build variant 0x%X\n", variant);
+
+   return NULL;
 }

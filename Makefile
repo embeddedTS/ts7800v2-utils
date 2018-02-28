@@ -5,6 +5,8 @@ CFLAGS =  -Wall -O
 
 all:  $(utils)
 
+ts7800ctl: ts7800ctl.c gpiolib.c gpiolib.h
+
 clean: 
 	rm -f $(utils) 
 
