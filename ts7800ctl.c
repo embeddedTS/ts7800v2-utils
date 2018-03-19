@@ -679,34 +679,30 @@ int main(int argc, char **argv)
       usleep(100000);
       c = 0x01;   // set chip active
       accelerometer_write(fd, &c, 0x2A, 1);
-
-      i=0;
-      while(1) {
-
-         accelerometer_read(fd, data, 0, sizeof(data));
-
-         swab(&data[1], &x, 2);
-         swab(&data[3], &y, 2);
-         swab(&data[5], &z, 2);
-
-         x&=0xfffc;
-         y&=0xfffc;
-         z&=0xfffc;
-
-         rx = (double)x / 16384.0;
-         ry = (double)y / 16384.0;
-         rz = (double)z / 16384.0;
-
-         printf("accel_x=%#0.03g\naccel_y=%#0.03g\naccel_z=%#0.03g\n", rx,ry,rz);
-
-         if (accel_loop_count > 0) {
-            if (++i >= accel_loop_count)
-               break;
+      accelerometer_read(fd, &c, 0x0D, 1);
+      if (c == 0x1a) {
+         i=0;
+         while(1) {
+            accelerometer_read(fd, data, 0, sizeof(data));
+            swab(&data[1], &x, 2);
+            swab(&data[3], &y, 2);
+            swab(&data[5], &z, 2);
+            x&=0xfffc;
+            y&=0xfffc;
+            z&=0xfffc;
+            rx = (double)x / 16384.0;
+            ry = (double)y / 16384.0;
+            rz = (double)z / 16384.0;
+            printf("accel_x=%#0.03g\naccel_y=%#0.03g\naccel_z=%#0.03g\n", rx,ry,rz);
+            if (accel_loop_count > 0) {
+               if (++i >= accel_loop_count)
+                  break;
+            }
          }
-
-
+      } else {
+         fprintf(stderr, "No Accelerometer chip found on i2c-0 at 0x%02X\n",
+            ACCELEROMETER_CHIP_ADDRESS);
       }
-
       close(fd);
    }
 
