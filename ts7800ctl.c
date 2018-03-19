@@ -101,6 +101,7 @@ enum pcbrev {
 };
 
 #define SILABS_CHIP_ADDRESS 0x54
+#define ACCELEROMETER_CHIP_ADDRESS 0x1c
 
 static __off_t syscon_phy;
 static __off_t get_fpga_phy(void);
@@ -119,6 +120,10 @@ static int silabs_write(int twifd, uint8_t *data, uint16_t addr, int bytes);
 static int parseMacAddress(const char *str, unsigned char *buf);
 static uint8_t nvram_read(int twifd, uint8_t addr);
 static void nvram_write(int twifd, uint8_t addr, uint8_t value);
+
+static int accelerometer_init(void);
+static int accelerometer_read(int twifd, uint8_t *data, uint16_t addr, int bytes);
+static int accelerometer_write(int twifd, uint8_t *data, uint16_t addr, int bytes);
 
 static inline void feed_wdt(int);
 static inline void disable_wdt(void);
@@ -155,6 +160,7 @@ static void usage(char **argv)
      "  -i                    Display board info\n"
      "  -o                    Display one time programmable data\n"
      "  -m                    Display contents of non-volatile memory\n"
+     "  -a[N]                 Display accelerometer data, loop N times (0=forever)\n"
      "  -t                    Display board temperature\n"
      "  -A    ADDR            Write DATA to ADDR in non-volatile memory\n"
      "  -D    DATA            Write DATA to ADDR in non-volatile memory\n"
@@ -177,6 +183,8 @@ int main(int argc, char **argv)
    unsigned int display_otp=0, display_mem=0, display_mac=0, set_mac=0 ;
    unsigned int display_odom=0, did_something=0, display_bday=0, display_temp=0;
    unsigned int start_adc=0, raw=0, do_info=0;
+   unsigned int start_accel=0;
+   unsigned int accel_loop_count=1;
    int cpu_cores = -1, cpu_rate = -1;
    unsigned int len = 0; //, odom, bday;
    char str[80];
@@ -217,7 +225,7 @@ int main(int argc, char **argv)
 
    nvram_addr = nvram_data = -1;
 
-   while ((c = getopt(argc, argv, "s:fdr:S:A:D:inFgGVoOmM::Btl:c:yT")) != -1) {
+   while ((c = getopt(argc, argv, "s:fda::r:S:A:D:inFgGVoOmM::Btl:c:yT")) != -1) {
       switch(c) {
          case 's':
 
@@ -262,6 +270,14 @@ int main(int argc, char **argv)
                if(optarg[len]=='\0') break;
             strncpy(str, optarg, len);
             str[len] = '\0';
+            break;
+
+         case 'a':
+            start_accel = 1;
+            if (optarg)
+               accel_loop_count = strtoul(optarg, NULL, 0);
+            else
+               accel_loop_count = 1;
             break;
 
          case 'S':
@@ -615,7 +631,7 @@ int main(int argc, char **argv)
             if (raw)
                printf("[0x%08X, %d]=%d\n", loop++, i, p);
             else
-               printf("[0x%08X, %d]=%d\n", loop++, i, 5000 * p / 1023);
+               printf("[0x%08X, %d]=%d\n", loop++, i, 50000 * p / 10230);
 
          }
 
@@ -646,6 +662,53 @@ int main(int argc, char **argv)
       }
    }
 
+   if (start_accel) {
+      int fd, i;
+      unsigned char data[7], c;
+
+      signed short x,y,z;
+      double rx,ry,rz;
+
+      if ((fd=accelerometer_init()) < 0) {
+           perror("Failed to iniutialize the accelerometer!");
+           return 1;
+      }
+
+      c = 0x40;   // reset the chip
+      accelerometer_write(fd, &c, 0x2B, 1);
+      usleep(100000);
+      c = 0x01;   // set chip active
+      accelerometer_write(fd, &c, 0x2A, 1);
+
+      i=0;
+      while(1) {
+
+         accelerometer_read(fd, data, 0, sizeof(data));
+
+         swab(&data[1], &x, 2);
+         swab(&data[3], &y, 2);
+         swab(&data[5], &z, 2);
+
+         x&=0xfffc;
+         y&=0xfffc;
+         z&=0xfffc;
+
+         rx = (double)x / 16384.0;
+         ry = (double)y / 16384.0;
+         rz = (double)z / 16384.0;
+
+         printf("accel_x=%#0.03g\naccel_y=%#0.03g\naccel_z=%#0.03g\n", rx,ry,rz);
+
+         if (accel_loop_count > 0) {
+            if (++i >= accel_loop_count)
+               break;
+         }
+
+
+      }
+
+      close(fd);
+   }
 
    if(val_data && val_addr) {
       silabs_write(twifd, &nvram_data, 1536 + nvram_addr, sizeof(nvram_data));
@@ -862,6 +925,73 @@ static int silabs_write(int twifd, uint8_t *data, uint16_t addr, int bytes)
    msg.flags = 0;
    msg.len  = 2 + bytes;
    msg.buf  = (char *)outdata;
+
+   packets.msgs  = &msg;
+   packets.nmsgs = 1;
+
+   if(ioctl(twifd, I2C_RDWR, &packets) < 0) {
+      return 1;
+   }
+   return 0;
+}
+
+
+
+static int accelerometer_init(void)
+{
+   static int fd = -1;
+   fd = open("/dev/i2c-0", O_RDWR);
+   if(fd != -1) {
+      if (ioctl(fd, I2C_SLAVE_FORCE, ACCELEROMETER_CHIP_ADDRESS) < 0) {
+         perror("Accelerometer did not ACK\n");
+         return -1;
+      }
+   }
+
+   return fd;
+}
+
+
+
+static int accelerometer_read(int twifd, uint8_t *data, uint16_t addr, int bytes)
+{
+   struct i2c_rdwr_ioctl_data packets;
+   struct i2c_msg msgs[2];
+
+   msgs[0].addr = ACCELEROMETER_CHIP_ADDRESS;
+   msgs[0].flags = 0;
+   msgs[0].len = 1;
+   msgs[0].buf = (void*)&addr;
+
+   msgs[1].addr = ACCELEROMETER_CHIP_ADDRESS;
+   msgs[1].flags = I2C_M_RD;
+   msgs[1].len = bytes;
+   msgs[1].buf =  (void *)data;
+
+   packets.msgs  = msgs;
+   packets.nmsgs = 2;
+
+   if (ioctl(twifd, I2C_RDWR, &packets) < 0) {
+      perror("Unable to send data");
+      return 1;
+   }
+
+   return 0;
+}
+
+static int accelerometer_write(int twifd, uint8_t *data, uint16_t addr, int bytes)
+{
+   struct i2c_rdwr_ioctl_data packets;
+   struct i2c_msg msg;
+   uint8_t outdata[128];
+
+   outdata[0] = addr;
+   memcpy(&outdata[1], data, bytes);
+
+   msg.addr = ACCELEROMETER_CHIP_ADDRESS;
+   msg.flags = 0;
+   msg.len  = 1 + bytes;
+   msg.buf  = (char*)outdata;
 
    packets.msgs  = &msg;
    packets.nmsgs = 1;
