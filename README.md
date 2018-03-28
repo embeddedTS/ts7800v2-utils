@@ -12,3 +12,5 @@ System utilities for the TS-7800v2.  These are:<br>
     
     ts7800ctl, for accessing ADCs, WDT, and sleep function.
     
+    pwmctl, for controlling the PWMs
+
