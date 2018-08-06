@@ -494,7 +494,7 @@ int main(int argc, char **argv)
          printf("buildmodel=unknown\n");
       } else {
          printf("buildmodel=%s\n", variant->name);
-         printf("max_rate=%dMHhz\n", variant->maxrate);
+         printf("max_rate=%d\n", variant->maxrate);
          printf("max_cores=%d\n", variant->maxcores);
       }
 
