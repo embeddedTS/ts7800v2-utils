@@ -186,6 +186,7 @@ int main(int argc, char **argv)
    unsigned int start_accel=0;
    unsigned int accel_loop_count=1;
    int cpu_cores = -1, cpu_rate = -1;
+   int opt_print_cpurates = 0;
    unsigned int len = 0; //, odom, bday;
    char str[80];
    unsigned char new_mac[6], nvram_data = 0;
@@ -225,6 +226,7 @@ int main(int argc, char **argv)
 
    nvram_addr = nvram_data = -1;
 
+   opterr = 0;
    while ((c = getopt(argc, argv, "s:fda::r:S:A:D:inFgGVoOmM::Btl:c:yT")) != -1) {
       switch(c) {
          case 's':
@@ -360,11 +362,35 @@ int main(int argc, char **argv)
             addr=1536;
             break;
 
+         case '?':
+            switch (optopt)
+            {
+            case 'l':
+               opt_print_cpurates = 1;
+               break;
+            default:
+               fprintf(stderr, "option -%c is invalid or missing a required argument\n", optopt);
+               return 1;
+            }
+            break;
          case 'h':
          default:
             usage(argv);
             return 1;
       }
+   }
+
+   if(opt_print_cpurates)
+   {
+     struct modelinfo *variant = get_build_variant();
+     int i;
+
+     for (i = 0; i < ARRAY_SIZE(cpurates); i++)
+     {
+        if(cpurates[i] <= variant->maxrate) {
+           printf("%d\n", cpurates[i]);
+        }
+     }
    }
 
    if(cpu_cores != -1 ||
