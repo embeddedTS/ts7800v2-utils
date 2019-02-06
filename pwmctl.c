@@ -11,7 +11,7 @@
 #include <string.h>
 #include <linux/pci.h>
 
-static __off_t get_fpga_phy(void);
+static off_t get_fpga_phy(void);
 
 
 static void usage(void)
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
    int c, devmem, chan, duty, gen;
    unsigned int reg;
    volatile unsigned int *syscon;
-   __off_t syscon_phy;
+   off_t syscon_phy;
 
    chan=duty=-1;
    gen=0;
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
    if ((syscon_phy = get_fpga_phy()) == 0) {
       fprintf(stderr, "Warning:  Did not discover FPGA base from PCI probe\n");
-      syscon_phy = (__off_t)0xFC081000;
+      syscon_phy = (off_t)0xFC081000;
    }
 
    devmem = open("/dev/mem", O_RDWR|O_SYNC);
@@ -125,9 +125,9 @@ int main(int argc, char *argv[])
 /**
    Try to extract the base of the FPGA by looking at the specific bus/slot
 */
-static __off_t get_fpga_phy(void)
+static off_t get_fpga_phy(void)
 {
-   static __off_t fpga = 0;
+   static off_t fpga = 0;
 
    if (fpga == 0) {
       unsigned int config[PCI_STD_HEADER_SIZEOF];
