@@ -103,8 +103,8 @@ enum pcbrev {
 #define SILABS_CHIP_ADDRESS 0x54
 #define ACCELEROMETER_CHIP_ADDRESS 0x1c
 
-static __off_t syscon_phy;
-static __off_t get_fpga_phy(void);
+static off_t syscon_phy;
+static off_t get_fpga_phy(void);
 
 
 static volatile unsigned int *syscon, *cpuregs;
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 
 	if ((syscon_phy = get_fpga_phy()) == 0) {
 		fprintf(stderr, "Warning:  Did not discover FPGA base from PCI probe\n");
-		syscon_phy = (__off_t)0xFC081000;
+		syscon_phy = (off_t)0xFC081000;
 	}
 
 
@@ -1108,9 +1108,9 @@ static inline void do_silabs_sleep(unsigned int deciseconds)
 /**
 	Try to extract the base of the FPGA by looking at the specific bus/slot
 */
-static __off_t get_fpga_phy(void)
+static off_t get_fpga_phy(void)
 {
-	static __off_t fpga = 0;
+	static off_t fpga = 0;
 
 	if (fpga == 0) {
 		unsigned int config[PCI_STD_HEADER_SIZEOF];
