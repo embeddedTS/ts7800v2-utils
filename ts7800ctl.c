@@ -592,7 +592,7 @@ int main(int argc, char **argv)
 					case 1: printf("ram_1350=%d\n", 2500 * p / 1024); break;
 					case 2: printf("v_1200=%d\n", 2500 * p / 1024); break;
 					case 3: printf("v_1800=%d\n", 2500 * p / 1024); break;
-					case 4: printf("v_8_30=%d\n", (uint32_t)(50*p)+(uint32_t)(p*575/5376)) ; break; //4.8% input scalar.
+					case 4: printf("v_8_30=%d\n", ((uint32_t)p*1605)>>5) ; break; //4.8% input scalar using power of 2 denominator.
 					case 5: printf("v_5va=%d\n", 5682 * p / 1024); break;
 					case 6: printf("an_3300=%d\n", 5000 * p / 1024); break;
 				}
