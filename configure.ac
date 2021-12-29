@@ -14,7 +14,6 @@ AM_INIT_AUTOMAKE([1.00 foreign no-define])
 AC_PROG_CC([arm-linux-gnueabihf-gcc])
 
 # Checks for libraries.
-AC_CHECK_LIB([gpiod], [gpiod_line_request_input], [], [AC_MSG_ERROR([libgpiod not found])])
 AC_CHECK_LIB([procps], [openproc], [], [AC_MSG_ERROR([libprocps not found])])
 
 # Checks for header files.
