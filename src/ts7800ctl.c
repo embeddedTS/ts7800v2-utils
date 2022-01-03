@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 	nvram_addr = nvram_data = -1;
 
 	opterr = 0;
-	while ((c = getopt(argc, argv, "s:fda::r:S:A:D:inFgGVoOmM::Btl:c:yTj:")) != -1) {
+	while ((c = getopt(argc, argv, "s:fda::r:S:A:D:inFgGVoOmM::Btl:c:yTj:h")) != -1) {
 		switch(c) {
 			case 's':
 
@@ -369,7 +369,8 @@ int main(int argc, char **argv)
 					opt_print_cpurates = 1;
 					break;
 				default:
-					fprintf(stderr, "option -%c is invalid or missing a required argument\n", optopt);
+					fprintf(stderr, "option -%c is invalid or missing a required argument\n\n", optopt);
+					usage(argv);
 					return 1;
 				}
 				break;
