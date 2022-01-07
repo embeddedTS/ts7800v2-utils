@@ -4,7 +4,7 @@
 LDFLAGS="$LDFLAGS -L/lib/arm-linux-gnueabihf/"
 
 AC_PREREQ([2.69])
-AC_INIT(ts7800v2-utils, 1.0, support@embeddedarm.com)
+AC_INIT(ts7800v2-utils, 1.0, support@embeddedTS.com)
 AC_CONFIG_SRCDIR([src/ts7800ctl.c])
 #AC_CONFIG_HEADERS([config.h])
 

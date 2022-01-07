@@ -143,7 +143,7 @@ static int millicelsius(void) {
 void usage(char **argv) {
 	fprintf(stderr,
 		"Usage: %s [OPTIONS] ...\n"
-		"Technologic Systems Userspace Idle Injector\n"
+		"embeddedTS Userspace Idle Injector\n"
 		"\n"
 		"  -l, --led      Specify LED brightness file to toggle, eg:\n"
 		"                 --led /sys/class/leds/right-red-led/brightness\n"

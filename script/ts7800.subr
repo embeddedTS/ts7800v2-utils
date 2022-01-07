@@ -1,4 +1,4 @@
-# Copyright (c) 20017, Technologic Systems.
+# Copyright (c) 20017-2022 Technologic Systems, Inc. dba embeddedTS.
 # All rights reserved.
 
 # Note: Be sure you have 64-bit arithmetic compiled into your shell, or some
@@ -69,13 +69,13 @@ pc104off() {
 }
 
 tshelp() {
-  echo "Technologic Systems TS-7800 Linux miniroot commands:"
+  echo "embeddedTS TS-7800 Linux miniroot commands:"
   echo "===================================================="
   echo
   echo "'exit' - start full Linux boot or exits telnet session"
   echo "'sdmount' - makes available executables on SD card at /mnt/root"
   echo
-  echo "Contact support@embeddedARM.com for further questions."
+  echo "Contact support@embeddedTS.com for further questions."
 }
 
 sdmount() {
