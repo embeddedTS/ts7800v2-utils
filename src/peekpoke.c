@@ -1,5 +1,6 @@
 #include<unistd.h>
 #include<stdlib.h>
+#include<stdint.h>
 #include<sys/types.h>
 #include<sys/mman.h>
 #include<stdio.h>
@@ -15,6 +16,10 @@
  * On uclibc based initrd's, the following additional gcc options are
  * necessary: -Wl,--rpath,/slib -Wl,-dynamic-linker,/slib/ld-uClibc.so.0
  */
+
+extern int get_os_info(void);
+
+extern int findpci(void);
 
 unsigned int parseBinary(char *str) {
   unsigned int val = 0;
@@ -56,11 +61,17 @@ unsigned int parseNumber(char *str) {
  */
 int main(int argc, char **argv) {
   off_t addr, page;
-  int fd,bits,dowrite=0,doread=1;
+  int fd,bits,osver,dowrite=0,doread=1;
   unsigned char *start;
   unsigned char *chardat, charval;
   unsigned short *shortdat, shortval;
   unsigned int *intdat, intval=0;
+  uint32_t fpga_base = 0;
+
+  osver=get_os_info();
+  if(osver > 4){
+	  fpga_base = findpci();
+  }
 
   if (argc < 3 || argc > 5) {
     fprintf(stderr,"Usage: peekpoke BIT_WIDTH ADDRESS <VALUE <x>>\n");
@@ -73,6 +84,8 @@ int main(int argc, char **argv) {
     return 0;
   }
   addr = parseNumber(argv[2]);
+  if(fpga_base > 0)
+	  addr = addr + fpga_base;
   if (argc > 3 ) { // peekpoke BITS ADDRESS VALUE x
     intval = parseNumber(argv[3]);
     if (argc > 4) doread = 0;

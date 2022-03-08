@@ -45,6 +45,6 @@ void fpga_init(void)
 
 	fd = open("/sys/bus/pci/devices/0000:02:00.0/resource0", O_RDWR|O_SYNC);
 	assert(fd != -1);
-	fpga = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	fpga = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 2);
 	assert ((void *)fpga != (void *)-1);
 }
