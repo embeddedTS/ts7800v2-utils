@@ -13,6 +13,8 @@
 #include <dirent.h>
 #include <linux/pci.h>
 
+#include "findpci_lib.c"
+
 /**
 	This is mostly a stub because as of 8/24/2017, the SiLabs code on the
 	TS-7800-V2 doesn't have the ADC support, sleep, WDT.
@@ -103,11 +105,12 @@ enum pcbrev {
 #define SILABS_CHIP_ADDRESS 0x54
 #define ACCELEROMETER_CHIP_ADDRESS 0x1c
 
-static off_t syscon_phy;
-static off_t get_fpga_phy(void);
+static uint32_t* syscon_phy;
+static uint32_t* get_fpga_phy(void);
 
 
-static volatile unsigned int *syscon, *cpuregs;
+static volatile uint32_t *syscon;
+static volatile unsigned int *cpuregs;
 static unsigned int verbose, addr;
 static int model, done, twifd;
 
@@ -197,7 +200,7 @@ int main(int argc, char **argv)
 
 	if ((syscon_phy = get_fpga_phy()) == 0) {
 		fprintf(stderr, "Warning:  Did not discover FPGA base from PCI probe\n");
-		syscon_phy = (off_t)0xFC081000;
+		syscon_phy = (uint32_t)0xFC081000;
 	}
 
 
@@ -1107,22 +1110,16 @@ static inline void do_silabs_sleep(unsigned int deciseconds)
 
 
 /**
-	Try to extract the base of the FPGA by looking at the specific bus/slot
+	Request a pointer to the FPGA from the memory manager.
 */
-static off_t get_fpga_phy(void)
+static uint32_t* get_fpga_phy(void)
 {
-	static off_t fpga = 0;
-
-	if (fpga == 0) {
-		unsigned int config[PCI_STD_HEADER_SIZEOF];
-		FILE *f = fopen("/sys/bus/pci/devices/0000:03:00.0/config", "r");
-
-		if (fread(config, 1, sizeof(config), f) > 0) {
-			if (config[PCI_BASE_ADDRESS_2 / 4])
-				fpga = config[PCI_BASE_ADDRESS_2 / 4];
-		} else
-			fprintf(stderr, "Can't read from the config!\n");
-		fclose(f);
+	static uint32_t fpga = NULL;
+	
+	fpga = find_fpga();
+	if(fpga==-1) {
+		printf("Unable to get FPGA resource!\n");
+		exit(1);
 	}
 
 	return fpga;
