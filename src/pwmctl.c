@@ -10,9 +10,9 @@
 #include <assert.h>
 #include <string.h>
 #include <linux/pci.h>
+#include "fpga.c"
 
-static off_t get_fpga_phy(void);
-
+uint32_t *fpga_base = NULL;
 
 static void usage(void)
 {
@@ -38,8 +38,7 @@ int main(int argc, char *argv[])
 {
    int c, devmem, chan, duty, gen;
    unsigned int reg;
-   volatile unsigned int *syscon;
-   off_t syscon_phy;
+   volatile uint32_t *syscon;
 
    chan=duty=-1;
    gen=0;
@@ -79,19 +78,13 @@ int main(int argc, char *argv[])
       }
    }
 
-   if ((syscon_phy = get_fpga_phy()) == 0) {
+   fpga_base = fpga_init();
+
+   if (fpga_base == 0) {
       fprintf(stderr, "Warning:  Did not discover FPGA base from PCI probe\n");
-      syscon_phy = (off_t)0xFC081000;
    }
 
-   devmem = open("/dev/mem", O_RDWR|O_SYNC);
-   if (devmem < 0) {
-      fprintf(stderr, "Error:  Can't open /dev/mem\n");
-      return 1;
-   }
-
-   syscon = (unsigned int *) mmap(0, 4096,
-        PROT_READ | PROT_WRITE, MAP_SHARED, devmem, syscon_phy);
+   syscon = fpga_base;
 
    if (syscon == MAP_FAILED) {
       fprintf(stderr, "Error:  Can't mmap syscon registers\n");
@@ -115,31 +108,7 @@ int main(int argc, char *argv[])
 
    syscon[0x4c / 4] = reg;
 
-   munmap((void*)syscon, 4096);
-
-   close(devmem);
+   munmap(syscon, 4096);
 
 }
 
-
-/**
-   Try to extract the base of the FPGA by looking at the specific bus/slot
-*/
-static off_t get_fpga_phy(void)
-{
-   static off_t fpga = 0;
-
-   if (fpga == 0) {
-      unsigned int config[PCI_STD_HEADER_SIZEOF];
-      FILE *f = fopen("/sys/bus/pci/devices/0000:03:00.0/config", "r");
-
-      if (fread(config, 1, sizeof(config), f) > 0) {
-         if (config[PCI_BASE_ADDRESS_2 / 4])
-            fpga = config[PCI_BASE_ADDRESS_2 / 4];
-      } else
-         fprintf(stderr, "Can't read from the config!\n");
-      fclose(f);
-   }
-
-   return fpga;
-}

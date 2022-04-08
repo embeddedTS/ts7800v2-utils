@@ -29,3 +29,8 @@ pwmctl_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
 idleinject_SOURCES = idleinject.c
 idleinject_CPPFLAGS = -lprocps -DGITCOMMIT="\"${GITCOMMIT}\""
 
+lcdmesg_SOURCES = lcdmesg.c fpga.c
+lcdmesg_CPPFLAGS = -lgpiod -DGITCOMMIT="\"${GITCOMMIT}\""
+
+keypad_SOURCES = keypad.c
+keypad_CPPFLAGS = -lgpiod -DGITCOMMIT="\"${GITCOMMIT}\""
