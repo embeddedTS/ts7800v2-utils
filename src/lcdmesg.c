@@ -10,8 +10,6 @@
 #include <assert.h>
 #include <time.h>
 #include <unistd.h>
-#include "helpers.h"
-#include "fpga.h"
 
 #define CONSUMER "lcdmesg"
 
@@ -19,10 +17,10 @@ uint16_t lcd_bias_value;
 
 struct hd44780 {
 	struct gpiod_chip *chip;
-	struct gpiod_line_bulk data;
 	struct gpiod_line *en;
 	struct gpiod_line *rs;
 	struct gpiod_line *wr;
+	struct gpiod_line *data[8];
 };
 
 void set_8bit_array(int *val, uint8_t data)
@@ -69,11 +67,16 @@ uint8_t get_8bit_array(int *val)
 void lcd_write(struct hd44780 *lcd, uint8_t rs, uint8_t data)
 {
 	int val[8];
+	int i = 0;
 	set_8bit_array(val, data);
 
 	gpiod_line_set_value(lcd->rs, rs);
 	gpiod_line_set_value(lcd->wr, 0);
-	gpiod_line_set_value_bulk(&lcd->data, val);
+	//gpiod_line_set_value_bulk(&lcd->data, val); // TODO:  Fix bulk gpio not compatible with 7800v2.
+	for(i = 0; i < 8; i++){
+		gpiod_line_set_value(lcd->data[i], val[i]);
+	}
+	
 	nsleep(60); /* tAS */
 	gpiod_line_set_value(lcd->en, 1);
 	nsleep(230); /* PWEH */
@@ -87,7 +90,7 @@ void lcd_write(struct hd44780 *lcd, uint8_t rs, uint8_t data)
  * This may need to change depending on the LCD used or the altitude */
 void lcd_contrast(uint8_t duty)
 {
-	fpoke32(0x1c, duty & 0xf);
+	//fpoke32(0x1c, duty & 0xf);  // For TS-7250-V3.  TODO: replace with 7800v2 compatible function.
 }
 
 void lcd_writechars(struct hd44780 *lcd, char *dat)
@@ -108,37 +111,41 @@ void lcd_returnhome(struct hd44780 *lcd)
 
 void lcd_init(struct hd44780 *lcd)
 {
-	int ret;
+	int ret = 0;
+	int i = 0;
 	int model;
 
-	model = get_model();
-	if(model == 0x7250){
-		unsigned int datapins[8] = {10, 9, 12, 11, 16, 15, 18, 17};
+	// header pin to line number conversion:
+	// LCD header LCD_xx pins   08, 07, 10, 09, 12, 11, 14, 13.
+	unsigned int datapins[8] = {19, 18, 21, 20, 23, 22, 25, 24}; 
 
-		lcd->chip = gpiod_chip_open_by_number(2);
-		assert(lcd->chip);
-		gpiod_line_bulk_init(&lcd->data);
-		ret = gpiod_chip_get_lines(lcd->chip, datapins, 8, &lcd->data);
-		assert(!ret);
-		lcd->en = gpiod_chip_get_line(lcd->chip, 20);
-		assert(lcd->en);
-		lcd->rs = gpiod_chip_get_line(lcd->chip, 21);
-		assert(lcd->rs);
-		lcd->wr = gpiod_chip_get_line(lcd->chip, 19);
-		assert(lcd->wr);
-	} else {
-		fprintf(stderr, "Unsupported model 0x%X\n", model);
-		exit(1);
+	lcd->chip = gpiod_chip_open_by_number(2);
+	assert(lcd->chip);
+
+	// iterate through datapins{} to enable and set lcd_xx pins.
+	for(i = 0; i < 8; i++){
+		lcd->data[i] = gpiod_chip_get_line(lcd->chip, datapins[i]);
+		assert(lcd->data[i]);
 	}
-
-	fpga_init(0x50004000);
+	lcd->en = gpiod_chip_get_line(lcd->chip, 16);  //LCD_EN = LCD_05 = line 16
+	assert(lcd->en);
+	lcd->rs = gpiod_chip_get_line(lcd->chip, 14);  //LCD_RS = LCD_03 = line 14
+	assert(lcd->rs);
+	lcd->wr = gpiod_chip_get_line(lcd->chip, 17);  //LCD_WR = LCD_06 = line 17
+	assert(lcd->wr);
 
 	/* Initialize all IO as high */
-	ret = gpiod_line_request_bulk_output(&lcd->data, CONSUMER, NULL);
+	//ret = gpiod_line_request_bulk_output(&lcd->data, CONSUMER, NULL);
+	for(i = 0; i<8; i++)
+		ret |= gpiod_line_request_output(lcd->data[i], CONSUMER, 1);
 	ret |= gpiod_line_request_output(lcd->en, CONSUMER, 1);
 	ret |= gpiod_line_request_output(lcd->rs, CONSUMER, 1);
 	ret |= gpiod_line_request_output(lcd->wr, CONSUMER, 1);
-	assert(!ret);
+	// XXX
+	//  Test to see if I actually have the GPIO I think I do... aka does the data
+	//  array struct actually work?
+	for(i=0; i<8; i++)
+		printf("%d=%s\n",i ,lcd->data[i]->name);
 
 	/* Recover from any potential state to 8-bit mode, and set:
 	 * Function Set
