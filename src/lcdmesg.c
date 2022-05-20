@@ -141,11 +141,6 @@ void lcd_init(struct hd44780 *lcd)
 	ret |= gpiod_line_request_output(lcd->en, CONSUMER, 1);
 	ret |= gpiod_line_request_output(lcd->rs, CONSUMER, 1);
 	ret |= gpiod_line_request_output(lcd->wr, CONSUMER, 1);
-	// XXX
-	//  Test to see if I actually have the GPIO I think I do... aka does the data
-	//  array struct actually work?
-	for(i=0; i<8; i++)
-		printf("%d=%s\n",i ,lcd->data[i]->name);
 
 	/* Recover from any potential state to 8-bit mode, and set:
 	 * Function Set
