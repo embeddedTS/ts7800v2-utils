@@ -15,9 +15,10 @@ AC_PROG_CC([arm-linux-gnueabihf-gcc])
 
 # Checks for libraries.
 AC_CHECK_LIB([procps], [openproc], [], [AC_MSG_ERROR([libprocps not found])])
+AC_CHECK_LIB([gpiod], [gpiod_line_request_input], [], [AC_MSG_ERROR([libgpiod not found])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h sys/ioctl.h termios.h unistd.h], [], [AC_MSG_ERROR([Missing required headers/libraries])])
+AC_CHECK_HEADERS([fcntl.h gpiod.h stdint.h stdlib.h string.h sys/ioctl.h termios.h unistd.h], [], [AC_MSG_ERROR([Missing required headers/libraries])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
