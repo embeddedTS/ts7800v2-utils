@@ -16,6 +16,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+uint32_t *fpga = NULL;
+
 static inline uint8_t fpga_peek8(size_t offs) {
         return *(volatile uint8_t *)(fpga + offs);
 }
@@ -48,33 +50,14 @@ static inline void fpga_poke8(size_t offs, uint8_t val) {
         *(volatile uint8_t *)(fpga + offs) = val;
 }
 
-int get_os_info(void)
-{
-	int ver_maj, err;
-	char ver_maj_char;
-	struct utsname *os_info;
-
-	os_info = malloc(sizeof(*os_info));
-	err = uname(os_info);
-	if(err){
-		free(os_info);
-		return -1;
-	}
-	ver_maj_char = os_info->release[0];
-	ver_maj = atoi(&ver_maj_char);
-	free(os_info);
-	return ver_maj;
-}
-
 uint32_t* fpga_init(void)
 {
-        uint32_t *fpga = NULL;
         int fd;
 
         fd = open("/sys/bus/pci/devices/0000:02:00.0/resource2", O_RDWR|O_SYNC);
         if (fd == -1)
-                return fd;
-        fpga = mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+                return NULL;
+        fpga = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
 	close(fd);
         return fpga;
