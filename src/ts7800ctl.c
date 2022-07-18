@@ -13,7 +13,7 @@
 #include <dirent.h>
 #include <linux/pci.h>
 
-#include "findpci_lib.c"
+#include "fpga.c"
 
 /**
 	This is mostly a stub because as of 8/24/2017, the SiLabs code on the
@@ -1116,7 +1116,7 @@ static uint32_t* get_fpga_phy(void)
 {
 	static uint32_t fpga = NULL;
 	
-	fpga = find_fpga();
+	fpga = fpga_init();
 	if(fpga==-1) {
 		printf("Unable to get FPGA resource!\n");
 		exit(1);

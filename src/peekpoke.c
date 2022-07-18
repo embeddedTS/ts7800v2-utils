@@ -7,19 +7,20 @@
 #include<fcntl.h>
 #include "peekpoke.h"
 
+#include "fpga.c"
+
 
 /* To compile peekpoke, use the appropriate cross compiler and run the
  * command:
  *
- *   gcc -Wall -O  -o peekpoke peekpoke.c 
+ *   gcc -Wall -O  -o peekpoke peekpoke.c fpga.c
  *
  * On uclibc based initrd's, the following additional gcc options are
  * necessary: -Wl,--rpath,/slib -Wl,-dynamic-linker,/slib/ld-uClibc.so.0
  */
 
-extern int get_os_info(void);
 
-extern int findpci(void);
+extern uint32_t* fgpa_init(void);
 
 unsigned int parseBinary(char *str) {
   unsigned int val = 0;
@@ -66,12 +67,7 @@ int main(int argc, char **argv) {
   unsigned char *chardat, charval;
   unsigned short *shortdat, shortval;
   unsigned int *intdat, intval=0;
-  uint32_t fpga_base = 0;
-
-  osver=get_os_info();
-  if(osver > 4){
-	  fpga_base = findpci();
-  }
+  uint32_t *fpga_base = 0;
 
   if (argc < 3 || argc > 5) {
     fprintf(stderr,"Usage: peekpoke BIT_WIDTH ADDRESS <VALUE <x>>\n");

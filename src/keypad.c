@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/time.h>
-#include "helpers.h"
 
 struct gpiod_chip *chip;
 struct gpiod_line_bulk dout;
@@ -86,11 +85,6 @@ int main()
 	unsigned int in_pins[4] = {6, 7, 8, 9};
 	uint8_t keys[16], debounced[16], oldstate[16];
 	memset(oldstate, 0, 16);
-
-	if(get_model() != 0x7250) {
-		fprintf(stderr, "This is only supported on the TS-7250-V3\n");
-		return 1;
-	}
 
 	chip = gpiod_chip_open_by_number(5);
 	assert(chip);

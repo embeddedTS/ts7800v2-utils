@@ -1,4 +1,4 @@
-bin_PROGRAMS = ts7800ctl accel-test eth_phy_peekpoke led7800 peekpoke rtc7800 load_fpga_flash pwmctl idleinject
+bin_PROGRAMS = ts7800ctl accel-test eth_phy_peekpoke led7800 peekpoke rtc7800 load_fpga_flash pwmctl idleinject keypad lcdmesg fpga_peekpoke
 
 GITCOMMIT:= $(shell git describe --abbrev=12 --dirty --always)
 
@@ -34,3 +34,6 @@ lcdmesg_CPPFLAGS = -lgpiod -DGITCOMMIT="\"${GITCOMMIT}\""
 
 keypad_SOURCES = keypad.c
 keypad_CPPFLAGS = -lgpiod -DGITCOMMIT="\"${GITCOMMIT}\""
+
+fpga_peekpoke_SOURCES = fpga_peekpoke.c
+fpga_peekpoke_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
