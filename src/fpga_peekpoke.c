@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include "fpga.c"
+#include "fpga.h"
 
 void usage(char *name)
 {
@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 	int sz;
 	uint32_t off;
 	uint64_t val;
-	static size_t *syscon;
+	static uint32_t *syscon;
 
 	if(argc != 3 && argc != 4) {
 		usage(argv[0]);
@@ -27,35 +27,35 @@ int main(int argc, char **argv) {
 	}
 
 	sz = strtoul(argv[1], NULL, 0);
-	off = strtoul(argv[2], NULL, 0);
+	syscon, off = strtoul(argv[2], NULL, 0);
 	if(argc == 4) val = strtoul(argv[3], NULL, 0);
 
-	syscon = fpga_init();
+	syscon = syscon_init();
 
- 	/* fpga_peek */
+ 	/* syscon_peek */
 	if (argc == 3) {
 		if (sz == 8)
-			val = fpga_peek8(off);
+			val = syscon_peek8(syscon, off);
 		else if (sz == 16)
-			val = fpga_peek16(off);
+			val = syscon_peek16(syscon, off);
 		else if (sz == 32)
-			val = fpga_peek32(off);
+			val = syscon_peek32(syscon, off);
 		else if (sz == 64)
-			val = fpga_peek64(off);
+			val = syscon_peek64(syscon, off);
 		else {
 			usage(argv[0]);
 			return 1;
 		}
 		printf("0x%llX\n", val);
-	} else { /* fpga_poke */
+	} else { /* syscon_poke */
 		if (sz == 8)
-			fpga_poke8(off, val);
+			syscon_poke8(syscon, off, val);
 		else if (sz == 16)
-			fpga_poke16(off, val);
+			syscon_poke16(syscon, off, val);
 		else if (sz == 32)
-			fpga_poke32(off, val);
+			syscon_poke32(syscon, off, val);
 		else if (sz == 64)
-			fpga_poke64(off, val);
+			syscon_poke64(syscon, off, val);
 		else {
 			usage(argv[0]);
 			return 1;

@@ -28,7 +28,7 @@ static inline uint16_t syscon_peek16(uint32_t *syscon, size_t offs) {
 }
 
 static inline uint32_t syscon_peek32(uint32_t *syscon, size_t offs) {
-        return *(volatile uint32_t *)(isa + offs);
+        return *(volatile uint32_t *)(syscon + offs);
 }
 
 static inline uint64_t syscon_peek64(uint32_t *syscon, size_t offs) {
@@ -87,7 +87,7 @@ uint32_t* syscon_init(void)
                 return NULL;
         fpga = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if(!fpga)
-		retun NULL;
+		return NULL;
 	else{
 		close(fd);
         	return fpga;
