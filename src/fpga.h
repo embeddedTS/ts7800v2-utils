@@ -11,7 +11,7 @@ extern inline void syscon_poke16(uint32_t *syscon, size_t offs, uint16_t val);
 extern inline void syscon_poke8(uint32_t *syscon, size_t offs, uint8_t val);
 
 // all the ISA access functions:
-extern inline void isa_io_peek8(uint32_t *isa, uint8_t offs);
+extern inline uint8_t isa_io_peek8(uint32_t *isa, uint8_t offs);
 extern inline uint8_t isa_io_poke8(uint32_t *isa, uint8_t offs, uint8_t val);
 extern inline uint16_t isa_io_peek16(uint32_t *isa, uint8_t offs);
 extern inline uint16_t isa_io_poke16(uint32_t *isa, uint8_t offs, uint16_t val);
