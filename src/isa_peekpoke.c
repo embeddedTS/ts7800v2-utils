@@ -12,7 +12,7 @@
 void usage(char *name)
 {
 	fprintf(stderr, "Usage %s <io/mem> <bit width> <address> [value]\n", name);
-	fprintf(stderr, "\tEg: %s i 8 0x140\n", name);
+	fprintf(stderr, "\tEg: %s io 8 0x140\n", name);
 }
 
 int main(int argc, char **argv) {
@@ -22,10 +22,15 @@ int main(int argc, char **argv) {
 	uint64_t val;
 	static uint32_t *isa;
 
-	if(argc != 3 && argc != 4) {
+	if(argc != 4 && argc != 5) {
 		usage(argv[0]);
 		return 1;
 	}
+
+	bus = argv[1][0];
+
+	printf("%d\n", argc);
+	printf("%c\n", argv[1][0]);
 	
 	sz = strtoul(argv[2], NULL, 0);
 	isa, off = strtoul(argv[3], NULL, 0);
@@ -49,13 +54,13 @@ int main(int argc, char **argv) {
 		}
 		printf("0x%llX\n", val);
 	} else { /* syscon_poke */
-		if (sz == 1)
+		if ((bus == 'm' || bus == 'M' ) && sz == 8)
 			isa_mem_poke8(isa, off, val);
-		else if (sz == 2)
+		else if ((bus == 'm' || bus == 'M' ) && sz == 16)
 			isa_mem_poke16(isa, off, val);
-		else if (sz == 3)
+		else if ((bus == 'i' || bus == 'I' ) && sz == 8)
 			isa_io_poke8(isa, off, val);
-		else if (sz == 4)
+		else if ((bus == 'i' || bus == 'I' ) && sz == 16)
 			isa_io_poke16(isa, off, val);
 		else {
 			usage(argv[0]);
