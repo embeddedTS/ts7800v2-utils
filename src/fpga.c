@@ -28,7 +28,7 @@ static inline uint16_t syscon_peek16(uint32_t *syscon, size_t offs) {
 }
 
 static inline uint32_t syscon_peek32(uint32_t *syscon, size_t offs) {
-        return *(volatile uint32_t *)(uint32_t isa + offs);
+        return *(volatile uint32_t *)(isa + offs);
 }
 
 static inline uint64_t syscon_peek64(uint32_t *syscon, size_t offs) {
@@ -53,29 +53,29 @@ static inline void syscon_poke8(uint32_t *syscon, size_t offs, uint8_t val) {
 
 // all the ISA access functions:
 static inline void isa_io_peek8(uint32_t *isa, uint8_t offs){
-	return *(volatile uint8_t *)(isa + offs);
+	return *(volatile uint8_t *)(isa + offs + 0x2000000);
 }
 static inline uint8_t isa_io_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
-	*(volatile uint8_t *)(isa + offs) = val;
+	*(volatile uint8_t *)(isa + offs + 0x2000000) = val;
 }
 static inline uint16_t isa_io_peek16(uint32_t *isa, uint8_t offs){
-	return *(volatile uint16_t)(isa + offs);
+	return *(volatile uint16_t *)(isa + offs + 0x3000000);
 }
 static inline uint16_t isa_io_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
-	*(volatile uint16_t)(isa + offs) = val;
+	*(volatile uint16_t *)(isa + offs + 0x3000000) = val;
 }
 
 static inline uint8_t isa_mem_peek8(uint32_t *isa, uint8_t offs){
-	return *(voliatile uint8_t)(isa + offs);
+	return *(volatile uint8_t *)(isa + offs);
 }
 static inline uint8_t isa_mem_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
-	*(volatile uint8_t)(isa + offs);
+	*(volatile uint8_t *)(isa + offs);
 }
 static inline uint16_t isa_mem_peek16(uint32_t *isa, uint8_t offs){
-	return *(volatile uint16_t)(isa + offs);
+	return *(volatile uint16_t *)(isa + offs + 0x1000000);
 }
 static inline uint16_t isa_mem_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
-	*(volatile uint16_t)(isa + offs);
+	*(volatile uint16_t *)(isa + offs + 0x1000000);
 }
 
 uint32_t* syscon_init(void)
@@ -101,7 +101,7 @@ uint32_t* isa_init(void)
 	fd = open("/sys/bus/pci/devices/0000:02:00.0/resource3", O_RDWR|O_SYNC);
 	if(fd == -1)
 		return NULL;
-	mem8_addr = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAM_SHARED, fd, 0);
+	mem8_addr = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if (!mem8_addr)
 		return NULL;
 	else{
