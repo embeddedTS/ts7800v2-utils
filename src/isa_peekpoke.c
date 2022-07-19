@@ -11,40 +11,37 @@
 
 void usage(char *name)
 {
-	fprintf(stderr, "Usage %s <bus> <address> [value]\n", name);
-	fprintf(stderr, "bus:  1 = MEM - 8 bit\n");
-	fprintf(stderr, "      2 = MEM - 16 bit\n");
-	fprintf(stderr, "      3 = IO  - 8 bit\n");
-	fprintf(stderr, "      4 = IO  - 16 bitn");
-	fprintf(stderr, "\tEg: %s 32 0x0\n", name);
+	fprintf(stderr, "Usage %s <i/m> <bit width> <address> [value]\n", name);
+	fprintf(stderr, "\tEg: %s i 8 0x0\n", name);
 }
 
 int main(int argc, char **argv) {
 	int sz;
+	char bus =  '\0';
 	uint32_t off;
 	uint64_t val;
-	static uint32_t *syscon;
+	static uint32_t *isa;
 
 	if(argc != 3 && argc != 4) {
 		usage(argv[0]);
 		return 1;
 	}
+	
+	sz = strtoul(argv[2], NULL, 0);
+	isa, off = strtoul(argv[3], NULL, 0);
+	if(argc == 5) val = strtoul(argv[4], NULL, 0);
 
-	sz = strtoul(argv[1], NULL, 0);
-	syscon, off = strtoul(argv[2], NULL, 0);
-	if(argc == 4) val = strtoul(argv[3], NULL, 0);
-
-	syscon = syscon_init();
+	isa = isa_init();
 
  	/* syscon_peek */
-	if (argc == 3) {
-		if (sz == 1)
+	if (argc == 4) {
+		if ((bus == 'm' || bus == 'M' ) && sz == 8)
 			val = isa_mem_peek8(syscon, off);
-		else if (sz == 2)
+		else if ((bus == 'm' || bus == 'M' ) && sz == 16)
 			val = isa_mem_peek16(syscon, off);
-		else if (sz == 3)
+		else if ((bus == 'i' || bus == 'I' ) && sz == 8)
 			val = isa_io_peek8(syscon, off);
-		else if (sz == 4)
+		else if ((bus == 'i' || bus == 'I' ) && sz == 16)
 			val = isa_io_peek16(syscon, off);
 		else {
 			usage(argv[0]);
