@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
 	int sz;
 	uint32_t off;
 	uint64_t val;
+	static size_t *syscon;
 
 	if(argc != 3 && argc != 4) {
 		usage(argv[0]);
@@ -29,7 +30,7 @@ int main(int argc, char **argv) {
 	off = strtoul(argv[2], NULL, 0);
 	if(argc == 4) val = strtoul(argv[3], NULL, 0);
 
-	fpga_init();
+	syscon = fpga_init();
 
  	/* fpga_peek */
 	if (argc == 3) {
