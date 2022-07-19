@@ -16,65 +16,66 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include "fpga.h"
 
 // all the syscon access functions.
 
-extern inline uint8_t syscon_peek8(uint32_t *syscon, size_t offs) {
+uint8_t syscon_peek8(uint32_t *syscon, size_t offs) {
         return *(volatile uint8_t *)(syscon + offs);
 }
 
-extern inline uint16_t syscon_peek16(uint32_t *syscon, size_t offs) {
+uint16_t syscon_peek16(uint32_t *syscon, size_t offs) {
         return *(volatile uint16_t *)(syscon + offs);
 }
 
-extern inline uint32_t syscon_peek32(uint32_t *syscon, size_t offs) {
+uint32_t syscon_peek32(uint32_t *syscon, size_t offs) {
         return *(volatile uint32_t *)(syscon + offs);
 }
 
-extern inline uint64_t syscon_peek64(uint32_t *syscon, size_t offs) {
+uint64_t syscon_peek64(uint32_t *syscon, size_t offs) {
         return *(volatile uint64_t *)(syscon + offs);
 }
 
-extern inline void syscon_poke32(uint32_t *syscon, size_t offs, uint32_t val) {
+void syscon_poke32(uint32_t *syscon, size_t offs, uint32_t val) {
         *(volatile uint32_t *)(syscon + offs) = val;
 }
 
-extern inline void syscon_poke64(uint32_t *syscon, size_t offs, uint64_t val) {
+void syscon_poke64(uint32_t *syscon, size_t offs, uint64_t val) {
         *(volatile uint64_t *)(syscon + offs) = val;
 }
 
-extern inline void syscon_poke16(uint32_t *syscon, size_t offs, uint16_t val) {
+void syscon_poke16(uint32_t *syscon, size_t offs, uint16_t val) {
         *(volatile uint16_t *)(syscon + offs) = val;
 }
 
-extern inline void syscon_poke8(uint32_t *syscon, size_t offs, uint8_t val) {
+void syscon_poke8(uint32_t *syscon, size_t offs, uint8_t val) {
         *(volatile uint8_t *)(syscon + offs) = val;
 }
 
 // all the ISA access functions:
-extern inline uint8_t isa_io_peek8(uint32_t *isa, uint8_t offs){
+uint8_t isa_io_peek8(uint32_t *isa, uint8_t offs){
 	return *(volatile uint8_t *)(isa + offs + 0x2000000);
 }
-extern inline uint8_t isa_io_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
+uint8_t isa_io_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
 	*(volatile uint8_t *)(isa + offs + 0x2000000) = val;
 }
-extern inline uint16_t isa_io_peek16(uint32_t *isa, uint8_t offs){
+uint16_t isa_io_peek16(uint32_t *isa, uint8_t offs){
 	return *(volatile uint16_t *)(isa + offs + 0x3000000);
 }
-extern inline uint16_t isa_io_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
+uint16_t isa_io_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
 	*(volatile uint16_t *)(isa + offs + 0x3000000) = val;
 }
 
-extern inline uint8_t isa_mem_peek8(uint32_t *isa, uint8_t offs){
+uint8_t isa_mem_peek8(uint32_t *isa, uint8_t offs){
 	return *(volatile uint8_t *)(isa + offs);
 }
-extern inline uint8_t isa_mem_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
+uint8_t isa_mem_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
 	*(volatile uint8_t *)(isa + offs);
 }
-extern inline uint16_t isa_mem_peek16(uint32_t *isa, uint8_t offs){
+uint16_t isa_mem_peek16(uint32_t *isa, uint8_t offs){
 	return *(volatile uint16_t *)(isa + offs + 0x1000000);
 }
-extern inline uint16_t isa_mem_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
+uint16_t isa_mem_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
 	*(volatile uint16_t *)(isa + offs + 0x1000000);
 }
 
