@@ -54,16 +54,16 @@ void syscon_poke8(uint32_t *syscon, size_t offs, uint8_t val) {
 
 // all the ISA access functions:
 uint8_t isa_io_peek8(uint32_t *isa, uint8_t offs){
-	return *(volatile uint8_t *)(isa + offs + 0x2000000);
+	return *(volatile uint8_t *)(isa + (offs + 0x2000000)/4);
 }
 uint8_t isa_io_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
-	*(volatile uint8_t *)(isa + offs + 0x2000000) = val;
+	*(volatile uint8_t *)(isa + (offs + 0x2000000)/4) = val;
 }
 uint16_t isa_io_peek16(uint32_t *isa, uint8_t offs){
-	return *(volatile uint16_t *)(isa + offs + 0x3000000);
+	return *(volatile uint16_t *)(isa + (offs + 0x3000000)/4);
 }
 uint16_t isa_io_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
-	*(volatile uint16_t *)(isa + offs + 0x3000000) = val;
+	*(volatile uint16_t *)(isa + (offs + 0x3000000)/4) = val;
 }
 
 uint8_t isa_mem_peek8(uint32_t *isa, uint8_t offs){
@@ -73,10 +73,10 @@ uint8_t isa_mem_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
 	*(volatile uint8_t *)(isa + offs);
 }
 uint16_t isa_mem_peek16(uint32_t *isa, uint8_t offs){
-	return *(volatile uint16_t *)(isa + offs + 0x1000000);
+	return *(volatile uint16_t *)(isa + (offs + 0x1000000/2));
 }
 uint16_t isa_mem_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
-	*(volatile uint16_t *)(isa + offs + 0x1000000);
+	*(volatile uint16_t *)(isa + (offs + 0x1000000/2));
 }
 
 uint32_t* syscon_init(void)
@@ -86,7 +86,7 @@ uint32_t* syscon_init(void)
 	fd = open("/sys/bus/pci/devices/0000:02:00.0/resource2", O_RDWR|O_SYNC);
         if (fd == -1)
                 return NULL;
-        fpga = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+        fpga = (size_t *)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if(!fpga)
 		return NULL;
 	else{
@@ -98,15 +98,15 @@ uint32_t* syscon_init(void)
 uint32_t* isa_init(void)
 {
 	int fd;
-	uint8_t* mem8_addr;
+	uint32_t* addr;
 	fd = open("/sys/bus/pci/devices/0000:02:00.0/resource3", O_RDWR|O_SYNC);
 	if(fd == -1)
 		return NULL;
-	mem8_addr = (size_t)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-	if (!mem8_addr)
+	addr = (uint32_t *)mmap(0, 0x4000000, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	if (!addr)
 		return NULL;
 	else{
 		close(fd);
-		return mem8_addr;
+		return addr;
 	}
 }
