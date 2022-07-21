@@ -21,35 +21,35 @@
 // all the syscon access functions.
 
 uint8_t syscon_peek8(uint32_t *syscon, size_t offs) {
-        return *(volatile uint8_t *)(syscon + offs);
+        return *(volatile uint8_t *)(syscon + (offs/4));
 }
 
 uint16_t syscon_peek16(uint32_t *syscon, size_t offs) {
-        return *(volatile uint16_t *)(syscon + offs);
+        return *(volatile uint16_t *)(syscon + (offs/4));
 }
 
 uint32_t syscon_peek32(uint32_t *syscon, size_t offs) {
-        return *(volatile uint32_t *)(syscon + offs);
+        return *(volatile uint32_t *)(syscon + (offs/4));
 }
 
 uint64_t syscon_peek64(uint32_t *syscon, size_t offs) {
-        return *(volatile uint64_t *)(syscon + offs);
+        return *(volatile uint64_t *)(syscon + (offs/4));
 }
 
 void syscon_poke32(uint32_t *syscon, size_t offs, uint32_t val) {
-        *(volatile uint32_t *)(syscon + offs) = val;
+        *(volatile uint32_t *)(syscon + (offs/4)) = val;
 }
 
 void syscon_poke64(uint32_t *syscon, size_t offs, uint64_t val) {
-        *(volatile uint64_t *)(syscon + offs) = val;
+        *(volatile uint64_t *)(syscon + (offs/4)) = val;
 }
 
 void syscon_poke16(uint32_t *syscon, size_t offs, uint16_t val) {
-        *(volatile uint16_t *)(syscon + offs) = val;
+        *(volatile uint16_t *)(syscon + (offs/4)) = val;
 }
 
 void syscon_poke8(uint32_t *syscon, size_t offs, uint8_t val) {
-        *(volatile uint8_t *)(syscon + offs) = val;
+        *(volatile uint8_t *)(syscon + (offs/4)) = val;
 }
 
 // all the ISA access functions:
@@ -67,10 +67,10 @@ uint16_t isa_io_poke16(uint32_t *isa, uint8_t offs, uint16_t val){
 }
 
 uint8_t isa_mem_peek8(uint32_t *isa, uint8_t offs){
-	return *(volatile uint8_t *)(isa + offs);
+	return *(volatile uint8_t *)(isa + (offs/4));
 }
 uint8_t isa_mem_poke8(uint32_t *isa, uint8_t offs, uint8_t val){
-	*(volatile uint8_t *)(isa + offs);
+	*(volatile uint8_t *)(isa + (offs/4));
 }
 uint16_t isa_mem_peek16(uint32_t *isa, uint8_t offs){
 	return *(volatile uint16_t *)(isa + (offs + 0x1000000/2));
