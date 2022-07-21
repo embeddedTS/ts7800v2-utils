@@ -29,14 +29,18 @@ int main(int argc, char **argv) {
 
 	bus = argv[1][0];
 
-	printf("%d\n", argc);
-	printf("%c\n", argv[1][0]);
-	
 	sz = strtoul(argv[2], NULL, 0);
 	isa, off = strtoul(argv[3], NULL, 0);
 	if(argc == 5) val = strtoul(argv[4], NULL, 0);
 
 	isa = isa_init();
+
+	#ifdef DEBUG
+	printf("%d\n", argc);
+	printf("%c\n", argv[1][0]);
+	printf("%d\n", sz);
+	printf("0x%X\n", isa);
+	#endif
 
  	/* syscon_peek */
 	if (argc == 4) {

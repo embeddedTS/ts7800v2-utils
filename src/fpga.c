@@ -86,7 +86,7 @@ uint32_t* syscon_init(void)
 	fd = open("/sys/bus/pci/devices/0000:02:00.0/resource2", O_RDWR|O_SYNC);
         if (fd == -1)
                 return NULL;
-        fpga = (size_t *)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+        fpga = (uint32_t *)mmap(0, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	if(!fpga)
 		return NULL;
 	else{
