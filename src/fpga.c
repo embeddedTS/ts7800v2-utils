@@ -1,13 +1,11 @@
-// findpci_lib.c
 // c. 2022 embeddedTS.com 
-// Michael D. Peters
 //
 // PCI base address is determined at boot-time, and isn't always the same.
 // The TS-7800-V2 uses the PCI bus to talk to its FPGA.  
-// This software finds the current fpga base address for BAR #2 or BAR #3
-// on the pci bus for the FPGA.
-//
-// Added peekpoke utility functions written by Mark Featherston.
+
+// This library acquires a temporary memory mapped pointer to the FPGA
+//  resource, either ISA or Syscon, and handles a read or write at that
+//  resource address.
 
 #include <stdio.h>
 #include <stdint.h>
