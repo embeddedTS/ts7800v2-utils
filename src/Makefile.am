@@ -1,8 +1,8 @@
-bin_PROGRAMS = ts7800ctl accel-test eth_phy_peekpoke led7800 peekpoke rtc7800 load_fpga_flash pwmctl idleinject keypad lcdmesg fpga_peekpoke
+bin_PROGRAMS = ts7800ctl accel-test eth_phy_peekpoke led7800 peekpoke rtc7800 load_fpga_flash pwmctl idleinject isa_peekpoke keypad lcdmesg syscon_peekpoke
 
 GITCOMMIT:= $(shell git describe --abbrev=12 --dirty --always)
 
-ts7800ctl_SOURCES = ts7800ctl.c gpiolib.c gpiolib.h i2c-dev.h
+ts7800ctl_SOURCES = ts7800ctl.c gpiolib.c gpiolib.h i2c-dev.h 
 ts7800ctl_CPPFLAGS = -Wall -DGITCOMMIT="\"${GITCOMMIT}\""
 
 accel_test_SOURCES = accel-test.c 

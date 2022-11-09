@@ -93,6 +93,11 @@ uint32_t* syscon_init(void)
 	}
 }
 
+uint32_t* fpga_init(void)
+{
+	return syscon_init();
+}
+
 uint32_t* isa_init(void)
 {
 	int fd;
