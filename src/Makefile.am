@@ -38,5 +38,5 @@ keypad_CPPFLAGS = -lgpiod -DGITCOMMIT="\"${GITCOMMIT}\""
 syscon_peekpoke_SOURCES = syscon_peekpoke.c fpga.c
 syscon_peekpoke_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
 
-isa_peekpoke_SOURCES = isa_peekpoke fpga.c
+isa_peekpoke_SOURCES = isa_peekpoke.c fpga.c
 isa_peekpoke_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
