@@ -1,1 +1,1 @@
-bin_SCRIPTS = tshwinit ts7800.subr
+bin_SCRIPTS = ts7800.subr
