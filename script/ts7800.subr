@@ -8,20 +8,20 @@
 bit_set() {
   local MASK VAL
   MASK=$((1<<$3))
-  VAL=`peekpoke $1 $2`
+  VAL=`syscon-peekpoke $1 $2`
   VAL=$((MASK|VAL))
-  peekpoke $1 $2 $VAL
+  syscon-peekpoke $1 $2 $VAL
 }
-                                                                                                                    
+
 # bit_clr BIT_WIDTH ADDRESS BIT_NUMBER
 bit_clr() {
   local MASK VAL
   MASK=$((1<<$3))
-  VAL=`peekpoke $1 $2`
+  VAL=`syscon-peekpoke $1 $2`
   VAL=$((~MASK&VAL))
-  peekpoke $1 $2 $VAL
+  syscon-peekpoke $1 $2 $VAL
 }
-                                                                                                                    
+
 # bit_get BIT_WIDTH ADDRESS BIT_NUMBER
 bit_get() {
   local MASK VAL
@@ -34,37 +34,37 @@ bit_get() {
 
 led0() {
   if test "$1" = "0"; then
-    bit_clr 32 0xfc081008 30 > /dev/null
+    bit_clr 32 0x08 30 > /dev/null
   else
-    bit_set 32 0xfc081008 30 > /dev/null
+    bit_set 32 0x08 30 > /dev/null
   fi
 }
 
 
 led1() {
   if test "$1" = "0"; then
-    bit_clr 32 0xfc08100c 20 > /dev/null
+    bit_clr 32 0x0c 20 > /dev/null
   else
-    bit_set 32 0xfc08100c 20 > /dev/null
+    bit_set 32 0x0c 20 > /dev/null
   fi
 }
 
 
 pc104on() {
   (
-  peekpoke 32 0xfc081030 0x55555555   
-  peekpoke 32 0xfc081034 0x55555555   
-  peekpoke 32 0xfc081038 0x55555   
-  peekpoke 32 0xfc08103c 0x55555 
+  syscon-peekpoke 32 0x30 0x55555555
+  syscon-peekpoke 32 0x34 0x55555555
+  syscon-peekpoke 32 0x38 0x55555
+  syscon-peekpoke 32 0x3c 0x55555
   ) > /dev/null 2>&1
 }
 
 pc104off() {
   (
-  peekpoke 32 0xfc081030 0   
-  peekpoke 32 0xfc081034 0   
-  peekpoke 32 0xfc081038 0   
-  peekpoke 32 0xfc08103c 0   
+  syscon-peekpoke 32 0x30 0
+  syscon-peekpoke 32 0x34 0
+  syscon-peekpoke 32 0x38 0
+  syscon-peekpoke 32 0x3c 0
   ) > /dev/null 2>&1
 }
 
@@ -91,20 +91,20 @@ enable_wifi() {
   (
      rmmod m25p80
      rmmod spi_nor
-     bit_clr 32 0xFC081008 31
+     bit_clr 32 0x8 31
      modprobe wilc-spi
      if [ $? -eq 0 ]; then
-        echo BT_POWER_UP > /dev/wilc_bt 
+        echo BT_POWER_UP > /dev/wilc_bt
         echo BT_FW_CHIP_WAKEUP > /dev/wilc_bt
         echo BT_DOWNLOAD_FW > /dev/wilc_bt
      fi
-  ) > /dev/null 2>&1  
+  ) > /dev/null 2>&1
 }
 
 disable_wifi() {  (
      rmmod wilc_spi wilc
-     bit_set 32 0xFC081008 31
+     bit_set 32 0x8 31
      modprobe spi-nor
      modprobe m25p80
-  ) > /dev/null 2>&1  
+  ) > /dev/null 2>&1
 }
