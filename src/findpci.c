@@ -7,9 +7,15 @@
 // kernel we assume an address and go with it.  Turns out that was safe
 // in 4.4 but is not at all safe in 5.10.
 //
-// This software will check the kernel version, then find and output the
-// current fpga base address for BAR #2 on the pci device that is our 
-// FPGA.
+// This software provides a short example of how to properly obtain a 
+// pointer to a specific memory space on the PCI bus.  This progam is
+// not useful in itself as the address provided in the printout is void
+// as soon as the program exits.
+//
+// The software also demonstrates how to inquire of the OS as to which 
+// version of Linux is running.
+//
+// This software is provided under the BSD 2-clause license.
 
 #include <stdio.h>
 #include <stdint.h>
@@ -17,7 +23,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-
 
 int get_os_info(void)
 {
@@ -43,7 +48,6 @@ int main(void)
 	int fd, ver_maj;
 	void *fpga;
 
-	
 	ver_maj = get_os_info();
 	if(ver_maj == -1) 
 		goto bad_end;
