@@ -200,7 +200,8 @@ int main(int argc, char **argv)
 
 	if ((syscon_phy = get_fpga_phy()) == 0) {
 		fprintf(stderr, "Warning:  Did not discover FPGA base from PCI probe\n");
-		syscon_phy = (uint32_t)0xFC081000;
+		// should NEVER get here.
+		exit(1);
 	}
 
 
