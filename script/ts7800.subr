@@ -84,27 +84,3 @@ sdmount() {
   ) > /dev/null 2>&1
 }
 
-
-
-
-enable_wifi() {
-  (
-     rmmod m25p80
-     rmmod spi_nor
-     bit_clr 32 0x8 31
-     modprobe wilc-spi
-     if [ $? -eq 0 ]; then
-        echo BT_POWER_UP > /dev/wilc_bt
-        echo BT_FW_CHIP_WAKEUP > /dev/wilc_bt
-        echo BT_DOWNLOAD_FW > /dev/wilc_bt
-     fi
-  ) > /dev/null 2>&1
-}
-
-disable_wifi() {  (
-     rmmod wilc_spi wilc
-     bit_set 32 0x8 31
-     modprobe spi-nor
-     modprobe m25p80
-  ) > /dev/null 2>&1
-}
