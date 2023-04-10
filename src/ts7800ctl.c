@@ -55,7 +55,6 @@ struct modelinfo
 {
 	int variant;
 	int maxrate;
-	int maxcores;
 	char *name;
 };
 
@@ -65,17 +64,14 @@ struct modelinfo Models[] =
 		.variant = 1,
 		.name = "TS-7800-V2-DMN1I",
 		.maxrate = 1333,
-		.maxcores = 2
 	}, {
 		.variant = 2,
 		.name = "TS-7800-V2-DMW2I",
 		.maxrate = 1333,
-		.maxcores = 2
 	}, {
 		.variant = 3,
 		.name = "TS-7800-V2-DMW3I",
 		.maxrate = 1333,
-		.maxcores = 2
 	}
 };
 #define MAX_VARIANTS 3
@@ -170,7 +166,6 @@ static void usage(char **argv)
 	  "  -D    DATA            Write DATA to ADDR in non-volatile memory\n"
 	  "  -M[xx:xx:xx:xx:xx:xx] Display [or optionally set] the MAC address\n"
 	  "  -l   RATE             Set CPU clock rate, or if no argument lists possible rates (max default)\n"
-	  "  -c   CORES            Set 1/2 Cores (max default)\n"
 	  "  -V                    Verbose output\n"
 	  "  -h                    This help screen\n",program_invocation_short_name);
 }
@@ -187,7 +182,7 @@ int main(int argc, char **argv)
 	unsigned int start_adc=0, raw=0, do_info=0;
 	unsigned int start_accel=0;
 	unsigned int loop_count=1;
-	int cpu_cores = -1, cpu_rate = -1;
+	int cpu_rate = -1;
 	int opt_print_cpurates = 0;
 	unsigned int len = 0; //, odom, bday;
 	char str[80];
@@ -242,10 +237,6 @@ int main(int argc, char **argv)
 					  "maximum sleep time is 524288\n");
 					secs = 0;
 				}
-				break;
-
-			case 'c':
-				cpu_cores = strtoul(optarg, NULL, 0);
 				break;
 
 			case 'l':
@@ -398,8 +389,7 @@ int main(int argc, char **argv)
 	  }
 	}
 
-	if(cpu_cores != -1 ||
-		cpu_rate != -1)
+	if(cpu_rate != -1)
 	{
 		uint8_t strap, new_strap;
 		struct modelinfo *variant = get_build_variant();
@@ -407,14 +397,6 @@ int main(int argc, char **argv)
 
 		if(variant == NULL)
 			return 1;
-
-		if(cpu_cores > variant->maxcores) {
-			fprintf(stderr, "Requested %d cores, max supported by %s is %d\n",
-					  cpu_cores,
-					  variant->name,
-					  variant->maxcores);
-			exit(1);
-		}
 
 		if(cpu_rate > variant->maxrate) {
 			fprintf(stderr, "Requested %dMhz cpu clock, max supported by %s is %dMhz\n",
@@ -425,17 +407,8 @@ int main(int argc, char **argv)
 		}
 
 		/* If the user specifies 0, correct to max supported by this variant */
-		if(cpu_cores == 0) {
-			cpu_cores = variant->maxcores;
-		}
 		if(cpu_rate == 0) {
 			cpu_rate = variant->maxrate;
-		}
-
-		if(cpu_cores == 1) {
-			new_strap &= ~(0x40);
-		} else if(cpu_cores == 2) {
-			new_strap |= 0x40;
 		}
 
 		if(cpu_rate != -1) {
@@ -526,7 +499,6 @@ int main(int argc, char **argv)
 		} else {
 			printf("buildmodel=%s\n", variant->name);
 			printf("max_rate=%d\n", variant->maxrate);
-			printf("max_cores=%d\n", variant->maxcores);
 		}
 
 		rev = get_pcb_rev();
