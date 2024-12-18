@@ -1,4 +1,4 @@
-bin_PROGRAMS = ts7800ctl accel-test eth_phy_peekpoke led7800 peekpoke rtc7800 load_fpga_flash pwmctl isa_peekpoke keypad lcdmesg syscon_peekpoke
+bin_PROGRAMS = ts7800ctl accel-test eth_phy_peekpoke led7800 peekpoke load_fpga_flash pwmctl isa_peekpoke keypad lcdmesg syscon_peekpoke
 
 GITCOMMIT:= $(shell git describe --abbrev=12 --dirty --always)
 
@@ -16,9 +16,6 @@ led7800_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
 
 peekpoke_SOURCES = peekpoke.c peekpoke.h
 peekpoke_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
-
-rtc7800_SOURCES = rtc7800.c
-rtc7800_CPPFLAGS = -DGITCOMMIT="\"${GITCOMMIT}\""
 
 load_fpga_flash_SOURCES = load_fpga_flash.c
 load_fpga_flash_CPPFLAGS =  -DGITCOMMIT="\"${GITCOMMIT}\""
